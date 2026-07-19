@@ -22,3 +22,9 @@ All notable changes to this project will be documented in this file.
 - Built a Zustand store (`useAuthStore`) with local storage persist middleware to persist JWT tokens.
 - Set up an `AuthGuard` component to protect dashboard routes and handle unauthenticated redirects.
 - Connected the login page with the backend `/auth/login` endpoint using `OAuth2PasswordRequestForm` structure.
+- Developed the Core Companies Module with full CRUD capabilities.
+- Integrated `@tanstack/react-table` for displaying company data.
+- Built a responsive `CompanyDialog` with Zod validation for creating and editing company records.
+- Implemented a Global Company Context using Zustand (`useCompanyStore`) and added a company selector to the Topbar.
+- Developed the Core Employees Module with full CRUD capabilities, scoped to the globally selected Company.
+- Built a large multi-column `EmployeeDialog` handling complex validations for names, phone numbers, and banking details.

@@ -18,11 +18,29 @@ Living document aligned with `PROJECT_SPEC.md` to track remaining and newly iden
 - [x] Implement responsive `Sidebar`
 - [x] Implement `Topbar` (Search, User Profile, Theme Toggle)
 
-## Milestone 5: Dashboard
-- [ ] Implement high-level metrics cards (e.g., Total Employees, Payroll this month).
-- [ ] Fetch statistics from backend (requires new backend endpoints or aggregations).
-- [ ] Implement basic charts using `recharts` for visual overview.
+## Milestone 6: Companies
+- [x] Create `services/companies.service.ts`
+- [x] Build `CompanyDialog` (Create/Edit form)
+- [x] Build `CompaniesTable` (TanStack Table)
+- [x] Integrate into `app/(dashboard)/companies/page.tsx`
+
+## Milestone 7: Sites & Departments
+- [ ] Implement Sites CRUD table and API service.
+- [ ] Connect Sites to Companies via `company_id`.
+- [ ] (Optional) Implement Departments management.
+
+## Milestone 8: Employees & Context
+- [x] Create `store/useCompanyStore.ts` (Global Company Context).
+- [x] Update `Topbar` with Company Selector dropdown.
+- [x] Create `services/employees.service.ts`.
+- [x] Build `EmployeeDialog` (Create/Edit form with Zod).
+- [x] Build `EmployeesTable` (TanStack Table).
+- [x] Integrate into `app/(dashboard)/employees/page.tsx`.
+
+## Milestone 9: Payscales
+- [ ] Implement Payscales CRUD table and API service.
+- [ ] Connect Payscales to Companies via `company_id`.
 
 ## Technical Debt & Follow-ups
+- [ ] **Payroll Module:** The backend lacks `/payroll` endpoints. The frontend payroll module is blocked until these are implemented.
 - [ ] Need to decide between localStorage vs httpOnly cookies for authentication token storage.
-- [ ] Confirm exactly which API endpoints the frontend should expect for "Employees" and "Payroll" since they are not currently visible in the backend router setup but might be needed soon.

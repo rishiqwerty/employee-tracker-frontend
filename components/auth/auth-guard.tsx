@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 
@@ -9,15 +9,22 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
-    // If we are not authenticated, redirect to login
-    if (!isAuthenticated) {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    // Only check auth after initial hydration from localStorage
+    if (mounted && !isAuthenticated) {
       router.replace("/login");
     }
-  }, [isAuthenticated, router, pathname]);
+  }, [mounted, isAuthenticated, router, pathname]);
 
-  // Optionally return null or a loader while checking auth state to prevent flash
-  if (!isAuthenticated) {
+  // Prevent flash or premature redirects by waiting for mount
+  if (!mounted || !isAuthenticated) {
     return null;
   }
 

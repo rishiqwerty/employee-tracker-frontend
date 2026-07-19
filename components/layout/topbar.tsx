@@ -7,8 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSidebarStore } from "@/store/useSidebarStore";
 
+import { useQuery } from "@tanstack/react-query";
+import { companiesService } from "@/services/companies.service";
+import { useCompanyStore } from "@/store/useCompanyStore";
+
 export function Topbar() {
   const { toggle } = useSidebarStore();
+  const { activeCompanyId, setActiveCompanyId } = useCompanyStore();
+
+  const { data: companies = [] } = useQuery({
+    queryKey: ["companies"],
+    queryFn: () => companiesService.getCompanies(),
+  });
+
+  // Set the first company as active by default if none is selected
+  if (companies.length > 0 && !activeCompanyId) {
+    setActiveCompanyId(companies[0].id);
+  }
 
   return (
     <header className="sticky top-0 z-10 flex h-16 w-full items-center justify-between border-b bg-background px-4 md:px-6">
@@ -17,11 +32,24 @@ export function Topbar() {
           variant="ghost"
           size="icon"
           className="md:hidden"
-          onClick={toggle} // This will be used for mobile drawer eventually
+          onClick={toggle}
         >
           <Menu className="h-5 w-5" />
           <span className="sr-only">Toggle navigation</span>
         </Button>
+        
+        <div className="flex items-center gap-4">
+          <select 
+            value={activeCompanyId || ""}
+            onChange={(e) => setActiveCompanyId(e.target.value)}
+            className="h-9 w-[180px] md:w-[220px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <option value="" disabled>Select Company</option>
+            {companies.map(c => (
+              <option key={c.id} value={c.id}>{c.company_name}</option>
+            ))}
+          </select>
+        </div>
         
         <div className="hidden items-center gap-2 md:flex">
           <div className="relative">

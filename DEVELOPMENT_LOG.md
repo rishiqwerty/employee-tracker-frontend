@@ -34,3 +34,17 @@ Record of architectural decisions and development history.
 - **API Communication:** Built an independent `auth.service.ts` connecting cleanly to the backend's `OAuth2PasswordRequestForm` route, using `application/x-www-form-urlencoded`.
 - **Session Persistence:** Configured Zustand `persist` middleware to write the JWT directly to `localStorage`, allowing the Axios interceptor to read it synchronously before any protected request fires.
 - **Route Protection:** Kept the `AuthGuard` client-side within the `AppLayout` wrapper. While Next.js middleware is an option, client-side guards provide a much faster integration since the state relies completely on Zustand's browser persistence.
+
+## Milestone 6: Companies (2026-07-19)
+
+### Decisions Made:
+- **Reprioritization:** Decided to build the Core Data modules (Companies, Sites, Employees) before the Dashboard so that data naturally flows into the analytics layer.
+- **Data Tables:** Adopted `@tanstack/react-table` combined with `shadcn/ui` table primitives for headless, highly customizable, and performant data grids.
+- **Forms and Dialogs:** Used `shadcn/ui` Dialogs to overlay Create/Edit forms (powered by React Hook Form + Zod), providing a seamless, single-page experience instead of navigating to separate routes for editing.
+
+## Milestone 8: Employees & Context (2026-07-19)
+
+### Decisions Made:
+- **Global Context Architecture:** Since most entities (Employees, Sites, Payscales) depend on a specific `company_id`, a `useCompanyStore` (Zustand) was introduced. The `Topbar` now features a global dropdown to switch contexts cleanly.
+- **Missing Payroll API:** Discovered that while `/payscales` exists, `/payroll` calculations do not yet exist on the backend. Logged this as technical debt/pending backend work.
+- **Strict Validation:** Configured rigorous Regex validation in Zod for Indian specific fields (PAN, Aadhaar, Phone, IFSC) matching the backend models.
