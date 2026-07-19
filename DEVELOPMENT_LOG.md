@@ -19,3 +19,10 @@ Record of architectural decisions and development history.
 - **Theme Provider:** Used `next-themes` mapped to the Tailwind `dark` class for seamless toggling.
 - **Components:** Installed `shadcn/ui` primitives proactively to avoid interrupting flow later.
 - **Toast Notifications:** Adopted `sonner` over the older `toast` component for a more modern, stacked notification experience.
+
+## Milestone 3: Layout (2026-07-19)
+
+### Decisions Made:
+- **State Management:** Used Zustand (`useSidebarStore`) for sidebar collapse state instead of passing props, making the sidebar easily controllable from the Topbar (hamburger menu on mobile) and from within the sidebar itself.
+- **Layout Architecture:** The `AppLayout` wraps only the authenticated portions of the application. This was placed in `app/(dashboard)/layout.tsx` using Next.js route groups so that the Auth pages (to be built next) can use a separate minimal layout without the sidebar/topbar.
+- **Icons:** Standardized on `lucide-react` icons (default with shadcn) for all navigation elements to maintain a consistent visual language matching the UI design specs.

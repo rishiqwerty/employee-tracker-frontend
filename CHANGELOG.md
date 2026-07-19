@@ -13,3 +13,7 @@ All notable changes to this project will be documented in this file.
 - Implemented `ThemeProvider` using `next-themes` to support Light/Dark mode.
 - Installed foundational `shadcn/ui` components (Card, Input, Label, Select, Dropdown Menu, Avatar, Table, Badge, Dialog).
 - Integrated `sonner` Toaster in the root layout for global notifications.
+- Created `AppLayout` wrapper component to coordinate sidebar and topbar structure.
+- Implemented responsive `Sidebar` with state management via Zustand (`useSidebarStore`).
+- Implemented `Topbar` featuring global search, theme toggle, and user navigation dropdown.
+- Created the initial Dashboard placeholder utilizing the layout.
