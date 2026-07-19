@@ -17,3 +17,8 @@ All notable changes to this project will be documented in this file.
 - Implemented responsive `Sidebar` with state management via Zustand (`useSidebarStore`).
 - Implemented `Topbar` featuring global search, theme toggle, and user navigation dropdown.
 - Created the initial Dashboard placeholder utilizing the layout.
+- Implemented robust `LoginPage` using `react-hook-form` and `zod` schema validation.
+- Configured TanStack React Query global `QueryProvider` to handle data mutations/fetching.
+- Built a Zustand store (`useAuthStore`) with local storage persist middleware to persist JWT tokens.
+- Set up an `AuthGuard` component to protect dashboard routes and handle unauthenticated redirects.
+- Connected the login page with the backend `/auth/login` endpoint using `OAuth2PasswordRequestForm` structure.

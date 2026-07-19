@@ -26,3 +26,11 @@ Record of architectural decisions and development history.
 - **State Management:** Used Zustand (`useSidebarStore`) for sidebar collapse state instead of passing props, making the sidebar easily controllable from the Topbar (hamburger menu on mobile) and from within the sidebar itself.
 - **Layout Architecture:** The `AppLayout` wraps only the authenticated portions of the application. This was placed in `app/(dashboard)/layout.tsx` using Next.js route groups so that the Auth pages (to be built next) can use a separate minimal layout without the sidebar/topbar.
 - **Icons:** Standardized on `lucide-react` icons (default with shadcn) for all navigation elements to maintain a consistent visual language matching the UI design specs.
+
+## Milestone 4: Authentication (2026-07-19)
+
+### Decisions Made:
+- **Form Handling:** Handled forms using `react-hook-form` with `zod` directly combined with `shadcn/ui` primitives (Input, Label, Button) instead of utilizing the `Form` wrapper, prioritizing speed and flexibility while maintaining validation rigidity.
+- **API Communication:** Built an independent `auth.service.ts` connecting cleanly to the backend's `OAuth2PasswordRequestForm` route, using `application/x-www-form-urlencoded`.
+- **Session Persistence:** Configured Zustand `persist` middleware to write the JWT directly to `localStorage`, allowing the Axios interceptor to read it synchronously before any protected request fires.
+- **Route Protection:** Kept the `AuthGuard` client-side within the `AppLayout` wrapper. While Next.js middleware is an option, client-side guards provide a much faster integration since the state relies completely on Zustand's browser persistence.

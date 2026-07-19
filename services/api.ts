@@ -12,12 +12,18 @@ export const api = axios.create({
 // Request interceptor to inject auth token
 api.interceptors.request.use(
   (config) => {
-    // We will retrieve the token from local storage or our auth store
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('auth_token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+    // Zustand persist stores data in localStorage under 'auth-storage' key.
+    // We can read it directly here to ensure the interceptor always has the latest token.
+    try {
+      const storageValue = localStorage.getItem('auth-storage');
+      if (storageValue) {
+        const { state } = JSON.parse(storageValue);
+        if (state?.token) {
+          config.headers.Authorization = `Bearer ${state.token}`;
+        }
       }
+    } catch (error) {
+      console.error('Error reading auth token from storage:', error);
     }
     return config;
   },

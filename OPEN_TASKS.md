@@ -18,11 +18,10 @@ Living document aligned with `PROJECT_SPEC.md` to track remaining and newly iden
 - [x] Implement responsive `Sidebar`
 - [x] Implement `Topbar` (Search, User Profile, Theme Toggle)
 
-## Milestone 4: Authentication
-- [ ] Build Login UI screen
-- [ ] Integrate with backend `/auth` endpoint
-- [ ] Implement session persistence logic
-- [ ] Secure dashboard routes behind an auth guard
+## Milestone 5: Dashboard
+- [ ] Implement high-level metrics cards (e.g., Total Employees, Payroll this month).
+- [ ] Fetch statistics from backend (requires new backend endpoints or aggregations).
+- [ ] Implement basic charts using `recharts` for visual overview.
 
 ## Technical Debt & Follow-ups
 - [ ] Need to decide between localStorage vs httpOnly cookies for authentication token storage.
