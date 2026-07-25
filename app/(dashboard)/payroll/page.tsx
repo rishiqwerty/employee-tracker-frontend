@@ -323,6 +323,7 @@ export default function PayrollPage() {
         onSearchChange={setSearchFilter}
         isLoading={isLoading}
         defaultDate={endDateStr}
+        companyName={sites.length > 0 ? "Construction Workforce Inc." : "Company Payroll"}
       />
     </div>
   );
