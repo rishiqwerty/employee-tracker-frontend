@@ -1,0 +1,339 @@
+"use client";
+
+import { useState, useMemo, useEffect } from "react";
+import { ChevronLeft, ChevronRight, Save, Calendar, MapPin } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+
+import { useCompanyStore } from "@/store/useCompanyStore";
+import { employeesService } from "@/services/employees.service";
+import { sitesService, Site } from "@/services/sites.service";
+import { jobRolesService, JobRole } from "@/services/job-roles.service";
+import { assignmentsService, EmployeeSiteHistory } from "@/services/assignments.service";
+import {
+  attendanceService,
+  AttendanceStatus,
+  BulkAttendanceMarkPayload,
+} from "@/services/attendance.service";
+
+import { Button } from "@/components/ui/button";
+import { AttendanceStats, AttendanceStatusFilter } from "@/components/attendance/attendance-stats";
+import { AttendanceSheetTable } from "@/components/attendance/attendance-sheet-table";
+
+export default function AttendancePage() {
+  const queryClient = useQueryClient();
+  const { activeCompanyId } = useCompanyStore();
+
+  const [selectedDate, setSelectedDate] = useState<string>(
+    new Date().toISOString().split("T")[0]
+  );
+  const [selectedSiteId, setSelectedSiteId] = useState<string>("ALL");
+  const [searchFilter, setSearchFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<AttendanceStatusFilter>("ALL");
+  const [attendanceState, setAttendanceState] = useState<Record<string, AttendanceStatus | undefined>>({});
+
+  // 1. Fetch Company Sites
+  const { data: sites = [] } = useQuery({
+    queryKey: ["sites", activeCompanyId],
+    queryFn: () => (activeCompanyId ? sitesService.getSites(activeCompanyId) : Promise.resolve([])),
+    enabled: !!activeCompanyId,
+  });
+
+  // 2. Fetch Company Job Roles
+  const { data: jobRoles = [] } = useQuery({
+    queryKey: ["job-roles", activeCompanyId],
+    queryFn: () => (activeCompanyId ? jobRolesService.getJobRoles(activeCompanyId) : Promise.resolve([])),
+    enabled: !!activeCompanyId,
+  });
+
+  const jobRolesMap = useMemo(() => {
+    return new Map<string, JobRole>(jobRoles.map((r) => [r.id, r]));
+  }, [jobRoles]);
+
+  // 3. Fetch Company Employees
+  const { data: employees = [], isLoading: isLoadingEmployees } = useQuery({
+    queryKey: ["employees", activeCompanyId],
+    queryFn: () => (activeCompanyId ? employeesService.getEmployees(activeCompanyId) : Promise.resolve([])),
+    enabled: !!activeCompanyId,
+  });
+
+  // 4. Fetch Active Assignments for Company
+  const { data: companyAssignments = [] } = useQuery({
+    queryKey: ["assignments", "company-active", activeCompanyId],
+    queryFn: () => (activeCompanyId ? assignmentsService.getCompanyActiveAssignments(activeCompanyId) : Promise.resolve([])),
+    enabled: !!activeCompanyId,
+  });
+
+  const assignmentMap = useMemo(() => {
+    return new Map<string, EmployeeSiteHistory>(
+      companyAssignments.map((a) => [a.employee_id, a])
+    );
+  }, [companyAssignments]);
+
+  // Filter employees by selected site (if specific site chosen)
+  const siteEmployees = useMemo(() => {
+    if (selectedSiteId === "ALL") return employees;
+    return employees.filter((emp) => {
+      const ass = assignmentMap.get(emp.id);
+      return ass?.site_id === selectedSiteId;
+    });
+  }, [employees, selectedSiteId, assignmentMap]);
+
+  // 5. Fetch existing attendance for the selected site and date
+  const { data: existingAttendance = [], isLoading: isLoadingAttendance } = useQuery({
+    queryKey: ["attendance", activeCompanyId, selectedSiteId, selectedDate, sites.map(s => s.id).join(",")],
+    queryFn: async () => {
+      if (selectedSiteId === "ALL") {
+        if (sites.length === 0) return [];
+        // Fetch attendance for all sites for that date
+        const allRecords = await Promise.all(
+          sites.map((s) => attendanceService.getSiteAttendance(s.id, selectedDate))
+        );
+        return allRecords.flat();
+      }
+      return attendanceService.getSiteAttendance(selectedSiteId, selectedDate);
+    },
+    enabled: !!activeCompanyId && !!selectedDate && (selectedSiteId !== "ALL" || sites.length > 0),
+  });
+
+  const existingAttendanceKey = useMemo(() => {
+    return existingAttendance.map((a) => `${a.employee_id}:${a.status}`).join(",");
+  }, [existingAttendance]);
+
+  // Populate local attendance state when existing attendance data changes
+  useEffect(() => {
+    const initialState: Record<string, AttendanceStatus | undefined> = {};
+    
+    // Keep unselected if not yet recorded in the database!
+    existingAttendance.forEach((record) => {
+      initialState[record.employee_id] = record.status;
+    });
+
+    setAttendanceState(initialState);
+  }, [existingAttendanceKey]);
+
+  // Status counts for summary stats
+  const statusCounts = useMemo(() => {
+    const counts: Record<AttendanceStatus | "Unmarked", number> = {
+      Present: 0,
+      Absent: 0,
+      "Half Day": 0,
+      Leave: 0,
+      Holiday: 0,
+      Unmarked: 0,
+    };
+    siteEmployees.forEach((emp) => {
+      const status = attendanceState[emp.id];
+      if (status) {
+        counts[status] = (counts[status] || 0) + 1;
+      } else {
+        counts.Unmarked += 1;
+      }
+    });
+    return counts;
+  }, [siteEmployees, attendanceState]);
+
+  const handleStatusChange = (employeeId: string, status: AttendanceStatus) => {
+    setAttendanceState((prev) => ({
+      ...prev,
+      [employeeId]: prev[employeeId] === status ? undefined : status, // Toggle off if clicked again!
+    }));
+  };
+
+  const handleMarkAllPresent = () => {
+    const nextState = { ...attendanceState };
+    siteEmployees.forEach((emp) => {
+      nextState[emp.id] = "Present";
+    });
+    setAttendanceState(nextState);
+    toast.info("Marked all workers as Present");
+  };
+
+  const handleDateChange = (offsetDays: number) => {
+    const curr = new Date(selectedDate);
+    curr.setDate(curr.getDate() + offsetDays);
+    const nextDate = curr.toISOString().split("T")[0];
+    const today = new Date().toISOString().split("T")[0];
+    if (nextDate > today) {
+      toast.warning("Cannot mark attendance for future dates");
+      return;
+    }
+    setSelectedDate(nextDate);
+  };
+
+  // Bulk Save Mutation
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (siteEmployees.length === 0) throw new Error("No workers to record attendance for");
+
+      // Group records by site_id
+      const siteGroupedPayloads: Record<string, { employee_id: string; status: AttendanceStatus }[]> = {};
+
+      let hasSelectedRecords = false;
+
+      siteEmployees.forEach((emp) => {
+        const status = attendanceState[emp.id];
+        if (!status) return; // Skip workers without an explicitly marked status!
+
+        hasSelectedRecords = true;
+
+        const ass = assignmentMap.get(emp.id);
+        const targetSiteId = ass?.site_id || (sites.length > 0 ? sites[0].id : null);
+        if (!targetSiteId) return;
+
+        if (!siteGroupedPayloads[targetSiteId]) {
+          siteGroupedPayloads[targetSiteId] = [];
+        }
+        siteGroupedPayloads[targetSiteId].push({
+          employee_id: emp.id,
+          status,
+        });
+      });
+
+      if (!hasSelectedRecords) {
+        throw new Error("Please select attendance for at least one worker before saving.");
+      }
+
+      // Submit bulk payloads per site
+      const promises = Object.entries(siteGroupedPayloads).map(([siteId, records]) => {
+        const payload: BulkAttendanceMarkPayload = {
+          date: selectedDate,
+          site_id: siteId,
+          records,
+        };
+        return attendanceService.bulkMarkAttendance(payload);
+      });
+
+      return Promise.all(promises);
+    },
+    onSuccess: () => {
+      toast.success("Attendance saved successfully!");
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+    },
+    onError: (error: Error | import("axios").AxiosError) => {
+      let msg = "Failed to save attendance";
+      if ("isAxiosError" in error && error.isAxiosError) {
+        const errorData = error.response?.data as { detail?: string };
+        if (typeof errorData?.detail === "string") {
+          msg = errorData.detail;
+        }
+      } else {
+        msg = error.message;
+      }
+      toast.error(msg);
+    },
+  });
+
+  if (!activeCompanyId) {
+    return (
+      <div className="flex flex-col gap-6">
+        <h1 className="text-3xl font-bold tracking-tight">Daily Attendance</h1>
+        <div className="rounded-xl border bg-card text-card-foreground shadow p-12 text-center">
+          <h2 className="text-xl font-semibold mb-2">No Company Selected</h2>
+          <p className="text-muted-foreground">
+            Please select a company from the top navigation bar to view and mark daily attendance.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Top Header & Navigation */}
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Daily Attendance</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Mark and track daily worker attendance by site and date.
+          </p>
+        </div>
+
+        {/* Date & Controls Bar */}
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {/* Site Selector */}
+          <div className="flex items-center gap-1.5 bg-card border rounded-lg px-2.5 py-1.5 shadow-sm">
+            <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+            <select
+              value={selectedSiteId}
+              onChange={(e) => setSelectedSiteId(e.target.value)}
+              className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer"
+            >
+              <option value="ALL">All Sites ({sites.length})</option>
+              {sites.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Date Quick Nav */}
+          <div className="flex items-center gap-1 bg-card border rounded-lg p-1 shadow-sm">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => handleDateChange(-1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+
+            <div className="flex items-center gap-1.5 px-2 text-sm font-semibold">
+              <Calendar className="h-4 w-4 text-primary" />
+              <input
+                type="date"
+                value={selectedDate}
+                max={new Date().toISOString().split("T")[0]}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="bg-transparent text-sm font-semibold focus:outline-none cursor-pointer"
+              />
+            </div>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => handleDateChange(1)}
+              disabled={selectedDate >= new Date().toISOString().split("T")[0]}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Save Attendance Primary Action */}
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending || siteEmployees.length === 0}
+            className="bg-primary text-primary-foreground font-semibold shadow-sm"
+          >
+            <Save className="h-4 w-4 mr-1.5" />
+            {saveMutation.isPending ? "Saving..." : "Save Attendance"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Daily Summary Stats & Metric Filter Buttons */}
+      <AttendanceStats
+        totalEmployees={siteEmployees.length}
+        statusCounts={statusCounts}
+        selectedFilter={statusFilter}
+        onFilterChange={setStatusFilter}
+      />
+
+      {/* Attendance Register Sheet Table */}
+      <AttendanceSheetTable
+        employees={siteEmployees}
+        jobRolesMap={jobRolesMap}
+        assignmentMap={assignmentMap}
+        attendanceState={attendanceState}
+        statusFilter={statusFilter}
+        onStatusChange={handleStatusChange}
+        onMarkAllPresent={handleMarkAllPresent}
+        searchFilter={searchFilter}
+        onSearchChange={setSearchFilter}
+        isLoading={isLoadingEmployees || isLoadingAttendance}
+      />
+    </div>
+  );
+}
