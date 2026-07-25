@@ -25,11 +25,6 @@ const routes = [
     href: "/",
   },
   {
-    label: "Companies",
-    icon: Building2,
-    href: "/companies",
-  },
-  {
     label: "Sites",
     icon: MapPin,
     href: "/sites",

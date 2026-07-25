@@ -11,6 +11,7 @@ import { useSidebarStore } from "@/store/useSidebarStore";
 import { useQuery } from "@tanstack/react-query";
 import { companiesService } from "@/services/companies.service";
 import { useCompanyStore } from "@/store/useCompanyStore";
+import { CompanySelector } from "@/components/companies/company-selector";
 
 export function Topbar() {
   const { toggle } = useSidebarStore();
@@ -43,18 +44,8 @@ export function Topbar() {
           <span className="sr-only">Toggle navigation</span>
         </Button>
         
-        <div className="flex items-center gap-4">
-          <select 
-            value={activeCompanyId || ""}
-            onChange={(e) => setActiveCompanyId(e.target.value)}
-            className="h-9 w-[180px] md:w-[220px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            <option value="" disabled>Select Company</option>
-            {companies.map(c => (
-              <option key={c.id} value={c.id}>{c.company_name}</option>
-            ))}
-          </select>
-        </div>
+        {/* Sleek Company Selector Dropdown */}
+        <CompanySelector />
         
         <div className="hidden items-center gap-2 md:flex">
           <div className="relative">
