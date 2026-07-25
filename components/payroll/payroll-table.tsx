@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { User, MapPin, Briefcase, Plus, FileText } from "lucide-react";
+import { User, MapPin, Briefcase, Plus, FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 import { PayrollRecord } from "@/services/payroll.service";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,9 @@ export function PayrollTable({
   const [payslipRecord, setPayslipRecord] = useState<PayrollRecord | null>(null);
   const [payslipDialogOpen, setPayslipDialogOpen] = useState(false);
 
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [pageIndex, setPageIndex] = useState<number>(0);
+
   const filteredRecords = useMemo(() => {
     if (!searchFilter.trim()) return records;
     const query = searchFilter.toLowerCase();
@@ -52,6 +55,14 @@ export function PayrollTable({
         r.job_role_name.toLowerCase().includes(query)
     );
   }, [records, searchFilter]);
+
+  const totalRows = filteredRecords.length;
+  const pageCount = Math.ceil(totalRows / pageSize) || 1;
+
+  const paginatedRecords = useMemo(() => {
+    const start = pageIndex * pageSize;
+    return filteredRecords.slice(start, start + pageSize);
+  }, [filteredRecords, pageIndex, pageSize]);
 
   const formatMoney = (val: number) =>
     new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(val);
@@ -119,7 +130,7 @@ export function PayrollTable({
                 </TableCell>
               </TableRow>
             ) : (
-              filteredRecords.map((row) => (
+              paginatedRecords.map((row) => (
                 <TableRow key={row.employee_id} className="hover:bg-muted/50">
                   {/* Code */}
                   <TableCell className="font-mono text-xs font-semibold text-muted-foreground">
@@ -235,6 +246,83 @@ export function PayrollTable({
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Pagination Footer Controls */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-3 px-2 text-xs">
+        <div className="flex items-center gap-4 text-muted-foreground font-medium flex-wrap sm:flex-nowrap">
+          <span>
+            Showing <strong className="text-foreground font-bold">{totalRows === 0 ? 0 : pageIndex * pageSize + 1}</strong> to{" "}
+            <strong className="text-foreground font-bold">{Math.min((pageIndex + 1) * pageSize, totalRows)}</strong> of{" "}
+            <strong className="text-foreground font-bold">{totalRows}</strong> entries
+          </span>
+
+          <div className="flex items-center gap-1.5">
+            <span>Rows per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPageIndex(0);
+              }}
+              className="h-8 rounded-xl border border-input/80 bg-background/60 dark:bg-muted/30 px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
+            >
+              {[10, 25, 50, 100].map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="icon-sm"
+            onClick={() => setPageIndex(0)}
+            disabled={pageIndex === 0}
+            title="First Page"
+          >
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+            disabled={pageIndex === 0}
+            className="gap-1 font-semibold"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Prev
+          </Button>
+
+          <span className="px-3 py-1 bg-muted/60 dark:bg-muted/30 rounded-full font-bold font-mono text-xs text-foreground border border-white/20">
+            {pageIndex + 1} / {pageCount}
+          </span>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPageIndex((p) => Math.min(pageCount - 1, p + 1))}
+            disabled={pageIndex >= pageCount - 1}
+            className="gap-1 font-semibold"
+          >
+            Next
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+
+          <Button
+            variant="outline"
+            size="icon-sm"
+            onClick={() => setPageIndex(pageCount - 1)}
+            disabled={pageIndex >= pageCount - 1}
+            title="Last Page"
+          >
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Add Expense / Deduction Dialog */}

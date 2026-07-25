@@ -14,8 +14,10 @@ export type JobRoleCreate = Omit<JobRole, 'id' | 'company_id' | 'created_at' | '
 export type JobRoleUpdate = Partial<JobRoleCreate>;
 
 export const jobRolesService = {
-  getJobRoles: async (companyId: string): Promise<JobRole[]> => {
-    const response = await api.get<JobRole[]>(`/companies/${companyId}/job-roles/`);
+  getJobRoles: async (companyId: string, skip = 0, limit = 100): Promise<JobRole[]> => {
+    const response = await api.get<JobRole[]>(`/companies/${companyId}/job-roles/`, {
+      params: { skip, limit },
+    });
     return response.data;
   },
 

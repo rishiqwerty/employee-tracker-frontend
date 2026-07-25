@@ -44,13 +44,17 @@ export const payrollService = {
     companyId: string,
     startDate: string,
     endDate: string,
-    siteId?: string
+    siteId?: string,
+    skip = 0,
+    limit = 100
   ): Promise<PayrollResponseOut> => {
     const response = await api.get<PayrollResponseOut>(`/companies/${companyId}/payroll/summary`, {
       params: {
         start_date: startDate,
         end_date: endDate,
         site_id: siteId && siteId !== 'ALL' ? siteId : undefined,
+        skip,
+        limit,
       },
     });
     return response.data;

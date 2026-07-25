@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CompanyDialog } from "./company-dialog";
+import { TablePagination } from "@/components/ui/table-pagination";
 
 interface CompaniesTableProps {
   data: Company[];
@@ -160,25 +161,7 @@ export function CompaniesTable({ data, isLoading }: CompaniesTableProps) {
         </Table>
       </div>
 
-      {/* Pagination controls */}
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
-      </div>
+      <TablePagination table={table} />
 
       <CompanyDialog 
         open={dialogOpen} 
