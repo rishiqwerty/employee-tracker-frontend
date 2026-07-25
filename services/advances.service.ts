@@ -26,10 +26,12 @@ export const advancesService = {
   getCompanyAdvances: async (
     companyId: string,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
+    skip = 0,
+    limit = 100
   ): Promise<EmployeeAdvance[]> => {
     const response = await api.get<EmployeeAdvance[]>(`/advances/company/${companyId}`, {
-      params: { start_date: startDate, end_date: endDate },
+      params: { start_date: startDate, end_date: endDate, skip, limit },
     });
     return response.data;
   },

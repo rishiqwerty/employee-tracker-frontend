@@ -3,10 +3,10 @@
 import { useEffect, useState, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { IndianRupee } from "lucide-react";
+import { IndianRupee, Plus, Briefcase } from "lucide-react";
 
 import { payscalesService, PayscaleCreate } from "@/services/payscales.service";
-import { jobRolesService } from "@/services/job-roles.service";
+import { jobRolesService, JobRole } from "@/services/job-roles.service";
 import { useCompanyStore } from "@/store/useCompanyStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,8 @@ export function PayscaleDialog({
   const { activeCompanyId } = useCompanyStore();
 
   const [rates, setRates] = useState<Record<string, string>>({});
+  const [newRoleName, setNewRoleName] = useState("");
+  const [showAddRoleInput, setShowAddRoleInput] = useState(false);
 
   // Fetch available job roles for active company
   const { data: jobRoles = [] } = useQuery({
@@ -73,6 +75,37 @@ export function PayscaleDialog({
     }));
   };
 
+  // Mutation to create a new job role / designation for company & site
+  const addRoleMutation = useMutation({
+    mutationFn: async (roleName: string) => {
+      if (!activeCompanyId) throw new Error("No active company selected");
+      return jobRolesService.createJobRole(activeCompanyId, {
+        name: roleName.trim(),
+        description: `Created for ${siteName || "company sites"}`,
+        active: true,
+      });
+    },
+    onSuccess: (newRole: JobRole) => {
+      toast.success(`Designation '${newRole.name}' created successfully`);
+      queryClient.invalidateQueries({ queryKey: ["job-roles", activeCompanyId] });
+      setNewRoleName("");
+      setShowAddRoleInput(false);
+      // Pre-fill default rate placeholder
+      setRates((prev) => ({ ...prev, [newRole.id]: "500" }));
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create designation");
+    },
+  });
+
+  const handleAddRoleSubmit = () => {
+    if (!newRoleName.trim()) {
+      toast.warning("Please enter a designation name");
+      return;
+    }
+    addRoleMutation.mutate(newRoleName);
+  };
+
   const mutation = useMutation({
     mutationFn: async () => {
       if (!siteId) throw new Error("No site selected");
@@ -106,26 +139,83 @@ export function PayscaleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] p-6">
+      <DialogContent className="sm:max-w-[500px] p-6 max-h-[85vh] overflow-y-auto">
         <DialogHeader className="border-b pb-3">
-          <div className="flex items-center gap-3">
-            <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 p-2.5 rounded-2xl">
-              <IndianRupee className="h-5 w-5" />
-            </div>
-            <div>
-              <DialogTitle className="text-lg font-bold">Configure Site Payscales</DialogTitle>
-              <DialogDescription className="text-xs">
-                Set daily wage rates (₹) per designation for <span className="font-semibold text-foreground">{siteName}</span>.
-              </DialogDescription>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3">
+              <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 p-2.5 rounded-2xl">
+                <IndianRupee className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold">Configure Site Payscales</DialogTitle>
+                <DialogDescription className="text-xs">
+                  Set daily wage rates (₹) per designation for <span className="font-semibold text-foreground">{siteName}</span>.
+                </DialogDescription>
+              </div>
             </div>
           </div>
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
+          {/* Header Action: Add New Designation Button */}
+          <div className="flex items-center justify-between pt-1">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Briefcase className="h-3.5 w-3.5 text-primary" />
+              Designation Wage Rates
+            </h4>
+
+            {!showAddRoleInput && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddRoleInput(true)}
+                className="h-7 text-xs gap-1 text-primary border-primary/30"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add New Role
+              </Button>
+            )}
+          </div>
+
+          {/* Inline New Role Creator Form */}
+          {showAddRoleInput && (
+            <div className="bg-primary/5 dark:bg-primary/10 border border-primary/20 p-3 rounded-2xl space-y-2.5">
+              <Label className="text-xs font-semibold text-primary">New Designation / Role Name</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="e.g. Crane Operator, Mason, Welder..."
+                  value={newRoleName}
+                  onChange={(e) => setNewRoleName(e.target.value)}
+                  className="h-9 text-xs"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddRoleSubmit}
+                  disabled={addRoleMutation.isPending}
+                  className="h-9 text-xs shrink-0"
+                >
+                  {addRoleMutation.isPending ? "Adding..." : "Add Role"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAddRoleInput(false)}
+                  className="h-9 text-xs shrink-0 text-muted-foreground"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* List of Job Roles & Daily Wage Inputs */}
           <div className="bg-muted/40 dark:bg-muted/20 p-4 rounded-2xl border space-y-3">
             {jobRoles.length === 0 ? (
               <div className="text-xs text-center text-muted-foreground py-4">
-                No job roles defined. Create designations under company settings.
+                No job roles defined yet. Click &quot;Add New Role&quot; above to create one.
               </div>
             ) : (
               jobRoles.map((role) => (

@@ -34,6 +34,7 @@ import {
 import { SiteDialog } from "./site-dialog";
 import { PayscaleDialog } from "./payscale-dialog";
 import { SiteDetailsDrawer } from "./site-details-drawer";
+import { TablePagination } from "@/components/ui/table-pagination";
 
 interface SitesTableProps {
   data: Site[];
@@ -220,24 +221,7 @@ export function SitesTable({ data, isLoading }: SitesTableProps) {
         </Table>
       </div>
 
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
-      </div>
+      <TablePagination table={table} />
 
       <SiteDialog 
         open={siteDialogOpen} 
