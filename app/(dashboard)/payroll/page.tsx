@@ -319,10 +319,10 @@ export default function PayrollPage() {
       {/* Interactive Payroll Sheet Table */}
       <PayrollTable
         records={records}
-        onDeductionChange={handleDeductionChange}
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
         isLoading={isLoading}
+        defaultDate={endDateStr}
       />
     </div>
   );

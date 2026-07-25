@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
-import { User, MapPin, Briefcase, IndianRupee } from "lucide-react";
+import { useState, useMemo } from "react";
+import { User, MapPin, Briefcase, Plus } from "lucide-react";
 
 import { PayrollRecord } from "@/services/payroll.service";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -14,22 +15,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AddExpenseDialog } from "./add-expense-dialog";
 
 interface PayrollTableProps {
   records: PayrollRecord[];
-  onDeductionChange: (employeeId: string, field: "advance" | "uniform", value: number) => void;
   searchFilter: string;
   onSearchChange: (val: string) => void;
   isLoading: boolean;
+  defaultDate?: string;
 }
 
 export function PayrollTable({
   records,
-  onDeductionChange,
   searchFilter,
   onSearchChange,
   isLoading,
+  defaultDate,
 }: PayrollTableProps) {
+  const [selectedRecord, setSelectedRecord] = useState<PayrollRecord | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   const filteredRecords = useMemo(() => {
     if (!searchFilter.trim()) return records;
     const query = searchFilter.toLowerCase();
@@ -44,6 +49,11 @@ export function PayrollTable({
 
   const formatMoney = (val: number) =>
     new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(val);
+
+  const handleOpenAddExpense = (record: PayrollRecord) => {
+    setSelectedRecord(record);
+    setDialogOpen(true);
+  };
 
   return (
     <div className="space-y-4">
@@ -71,24 +81,29 @@ export function PayrollTable({
               <TableHead className="text-center font-bold">Paid Days</TableHead>
               <TableHead className="text-right">Daily Rate</TableHead>
               <TableHead className="text-right font-bold">Gross Wage</TableHead>
-              <TableHead className="w-[120px] text-center">Advance (₹)</TableHead>
-              <TableHead className="w-[120px] text-center">Uniform (₹)</TableHead>
+              <TableHead className="text-right font-semibold text-amber-600 dark:text-amber-400">
+                Advance (₹)
+              </TableHead>
+              <TableHead className="text-right font-semibold text-purple-600 dark:text-purple-400">
+                Uniform (₹)
+              </TableHead>
               <TableHead className="text-right font-bold text-emerald-600 dark:text-emerald-400">
                 Net Pay (₹)
               </TableHead>
+              <TableHead className="text-center w-[130px]">Action</TableHead>
             </TableRow>
           </TableHeader>
 
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={11} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={12} className="h-32 text-center text-muted-foreground">
                   Calculating payroll from attendance records...
                 </TableCell>
               </TableRow>
             ) : filteredRecords.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={12} className="h-32 text-center text-muted-foreground">
                   No payroll records found for the selected month/filter.
                 </TableCell>
               </TableRow>
@@ -106,7 +121,7 @@ export function PayrollTable({
                       <div className="bg-muted p-1.5 rounded-full shrink-0">
                         <User className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      <span className="font-semibold text-sm truncate max-w-[150px]">
+                      <span className="font-semibold text-sm truncate max-w-[140px]">
                         {row.full_name}
                       </span>
                     </div>
@@ -155,49 +170,40 @@ export function PayrollTable({
                     ₹{formatMoney(row.gross_salary)}
                   </TableCell>
 
-                  {/* Advance Input */}
-                  <TableCell className="text-center">
-                    <div className="relative flex items-center">
-                      <Input
-                        type="number"
-                        min="0"
-                        value={row.advance_amount || ""}
-                        onChange={(e) =>
-                          onDeductionChange(
-                            row.employee_id,
-                            "advance",
-                            Math.max(0, parseFloat(e.target.value) || 0)
-                          )
-                        }
-                        className="h-8 text-center text-xs font-mono px-1 py-0 bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900 focus-visible:ring-amber-500"
-                        placeholder="0"
-                      />
-                    </div>
+                  {/* Tracked Advance */}
+                  <TableCell className="text-right font-mono text-xs font-semibold text-amber-600 dark:text-amber-400">
+                    {row.advance_amount > 0 ? `₹${formatMoney(row.advance_amount)}` : "-"}
                   </TableCell>
 
-                  {/* Uniform Input */}
-                  <TableCell className="text-center">
-                    <div className="relative flex items-center">
-                      <Input
-                        type="number"
-                        min="0"
-                        value={row.uniform_deduction || ""}
-                        onChange={(e) =>
-                          onDeductionChange(
-                            row.employee_id,
-                            "uniform",
-                            Math.max(0, parseFloat(e.target.value) || 0)
-                          )
-                        }
-                        className="h-8 text-center text-xs font-mono px-1 py-0 bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900 focus-visible:ring-purple-500"
-                        placeholder="0"
-                      />
-                    </div>
+                  {/* Tracked Uniform Deduction */}
+                  <TableCell className="text-right font-mono text-xs font-semibold text-purple-600 dark:text-purple-400">
+                    {row.uniform_deduction > 0 ? `₹${formatMoney(row.uniform_deduction)}` : "-"}
                   </TableCell>
 
                   {/* Net Payable */}
-                  <TableCell className="text-right font-bold text-base font-mono text-emerald-600 dark:text-emerald-400">
-                    ₹{formatMoney(row.net_salary)}
+                  <TableCell className="text-right">
+                    {row.net_salary < 0 ? (
+                      <span className="inline-block px-2 py-0.5 text-xs font-mono font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900">
+                        -₹{formatMoney(Math.abs(row.net_salary))}
+                      </span>
+                    ) : (
+                      <span className="font-bold text-base font-mono text-emerald-600 dark:text-emerald-400">
+                        ₹{formatMoney(row.net_salary)}
+                      </span>
+                    )}
+                  </TableCell>
+
+                  {/* Add Entry Action Button */}
+                  <TableCell className="text-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1 font-medium"
+                      onClick={() => handleOpenAddExpense(row)}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add Entry
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
@@ -205,6 +211,14 @@ export function PayrollTable({
           </TableBody>
         </Table>
       </div>
+
+      {/* Add Expense / Deduction Dialog */}
+      <AddExpenseDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        record={selectedRecord}
+        defaultDate={defaultDate}
+      />
     </div>
   );
 }
