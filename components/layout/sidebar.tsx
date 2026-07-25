@@ -16,6 +16,9 @@ import {
 
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/store/useSidebarStore";
+import { useCompanyStore } from "@/store/useCompanyStore";
+import { useQuery } from "@tanstack/react-query";
+import { configService } from "@/services/config.service";
 import { Button } from "@/components/ui/button";
 
 const routes = [
@@ -54,6 +57,15 @@ const routes = [
 export function Sidebar() {
   const pathname = usePathname();
   const { isOpen, toggle } = useSidebarStore();
+  const { appBrandName, customLogoUrl } = useCompanyStore();
+
+  const { data: branding } = useQuery({
+    queryKey: ["app-config-branding"],
+    queryFn: () => configService.getAppBranding(),
+  });
+
+  const logoSrc = customLogoUrl || branding?.logo_url;
+  const brandName = appBrandName || branding?.app_name || "EmployeeTracker";
 
   return (
     <>
@@ -65,11 +77,19 @@ export function Sidebar() {
         )}
       >
         <div className="flex h-16 items-center justify-between px-4 border-b">
-          <div className={cn("flex items-center gap-2 font-bold", !isOpen && "hidden")}>
-            <div className="h-6 w-6 rounded bg-primary text-primary-foreground flex items-center justify-center text-xs font-mono font-bold">
-              ET
-            </div>
-            <span className="truncate">EmployeeTracker</span>
+          <div className={cn("flex items-center gap-2.5 font-bold min-w-0", !isOpen && "hidden")}>
+            {logoSrc ? (
+              <img
+                src={logoSrc}
+                alt="Logo"
+                className="h-8 w-8 rounded-xl object-contain bg-background border p-0.5 shrink-0 shadow-xs"
+              />
+            ) : (
+              <div className="h-8 w-8 rounded-xl bg-primary text-primary-foreground flex items-center justify-center text-xs font-mono font-bold shrink-0 shadow-xs">
+                {brandName.substring(0, 2).toUpperCase()}
+              </div>
+            )}
+            <span className="truncate text-sm font-extrabold tracking-tight">{brandName}</span>
           </div>
           {isOpen && (
             <Button variant="ghost" size="icon" onClick={toggle} className="ml-auto h-8 w-8">
@@ -115,11 +135,19 @@ export function Sidebar() {
           {/* Slide-out Panel */}
           <div className="relative flex w-4/5 max-w-sm flex-col bg-card border-r shadow-2xl z-50 h-full">
             <div className="flex h-16 items-center justify-between px-4 border-b">
-              <div className="flex items-center gap-2 font-bold">
-                <div className="h-6 w-6 rounded bg-primary text-primary-foreground flex items-center justify-center text-xs font-mono font-bold">
-                  ET
-                </div>
-                <span>EmployeeTracker</span>
+              <div className="flex items-center gap-2.5 font-bold">
+                {logoSrc ? (
+                  <img
+                    src={logoSrc}
+                    alt="Logo"
+                    className="h-8 w-8 rounded-xl object-contain bg-background border p-0.5 shrink-0 shadow-xs"
+                  />
+                ) : (
+                  <div className="h-7 w-7 rounded bg-primary text-primary-foreground flex items-center justify-center text-xs font-mono font-bold">
+                    {brandName.substring(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <span className="truncate text-sm font-bold">{brandName}</span>
               </div>
               <Button variant="ghost" size="icon" onClick={toggle} className="h-8 w-8">
                 <X className="h-4 w-4" />
