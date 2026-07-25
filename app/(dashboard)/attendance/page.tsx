@@ -96,7 +96,11 @@ export default function AttendancePage() {
     enabled: !!activeCompanyId && !!selectedDate && (selectedSiteId !== "ALL" || sites.length > 0),
   });
 
-  // Populate local attendance state when existing attendance data changes or site/date changes
+  const existingAttendanceKey = useMemo(() => {
+    return existingAttendance.map((a) => `${a.employee_id}:${a.status}`).join(",");
+  }, [existingAttendance]);
+
+  // Populate local attendance state when existing attendance data changes
   useEffect(() => {
     const initialState: Record<string, AttendanceStatus | undefined> = {};
     
@@ -106,7 +110,7 @@ export default function AttendancePage() {
     });
 
     setAttendanceState(initialState);
-  }, [siteEmployees, existingAttendance]);
+  }, [existingAttendanceKey]);
 
   // Status counts for summary stats
   const statusCounts = useMemo(() => {

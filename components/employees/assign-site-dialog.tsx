@@ -85,7 +85,7 @@ export function AssignSiteDialog({
         effective_from: new Date().toISOString().split("T")[0],
       });
     }
-  }, [open, currentSiteId, currentJobRoleId, sites, jobRoles, reset]);
+  }, [open, employee?.id]);
 
   const mutation = useMutation({
     mutationFn: (data: TransferFormValues) => {

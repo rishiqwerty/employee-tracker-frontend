@@ -107,12 +107,15 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
 
   useEffect(() => {
     if (open) {
+      const defaultSite = activeAssignment?.site_id || (sites.length > 0 ? sites[0].id : "");
+      const defaultRole = activeAssignment?.job_role_id || (jobRoles.length > 0 ? jobRoles[0].id : "");
+      
       if (employee) {
         reset({
           employee_code: employee.employee_code,
           full_name: employee.full_name,
-          site_id: activeAssignment?.site_id || (sites.length > 0 ? sites[0].id : ""),
-          job_role_id: activeAssignment?.job_role_id || (jobRoles.length > 0 ? jobRoles[0].id : ""),
+          site_id: defaultSite,
+          job_role_id: defaultRole,
           phone: employee.phone,
           alternate_phone: employee.alternate_phone || "",
           father_name: employee.father_name || "",
@@ -131,8 +134,8 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
         reset({
           employee_code: "",
           full_name: "",
-          site_id: sites.length > 0 ? sites[0].id : "",
-          job_role_id: jobRoles.length > 0 ? jobRoles[0].id : "",
+          site_id: defaultSite,
+          job_role_id: defaultRole,
           phone: "",
           alternate_phone: "",
           father_name: "",
@@ -149,7 +152,7 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
         });
       }
     }
-  }, [open, employee, activeAssignment, sites, jobRoles, reset]);
+  }, [open, employee?.id]);
 
   const mutation = useMutation({
     mutationFn: async (data: EmployeeFormValues) => {
