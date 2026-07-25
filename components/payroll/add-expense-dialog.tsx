@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { IndianRupee } from "lucide-react";
 
 import { advancesService } from "@/services/advances.service";
 import { deductionsService } from "@/services/deductions.service";
@@ -120,74 +121,88 @@ export function AddExpenseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px]">
-        <DialogHeader>
-          <DialogTitle>Record Advance / Uniform Expense</DialogTitle>
-          <DialogDescription>
-            {record
-              ? `Record an advance payment or uniform deduction entry for ${record.full_name} (${record.employee_code}).`
-              : "Record worker expense entry."}
-          </DialogDescription>
+      <DialogContent className="sm:max-w-[460px] p-6">
+        <DialogHeader className="border-b pb-3">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/10 text-primary p-2.5 rounded-2xl">
+              <IndianRupee className="h-5 w-5" />
+            </div>
+            <div>
+              <DialogTitle className="text-lg font-bold">Record Worker Entry</DialogTitle>
+              <DialogDescription className="text-xs">
+                {record
+                  ? `Record an advance or uniform deduction entry for ${record.full_name} (${record.employee_code}).`
+                  : "Record worker expense entry."}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
-          {/* Category Select */}
-          <div className="space-y-2">
-            <Label htmlFor="category">Entry Category *</Label>
-            <select
-              id="category"
-              {...register("category")}
-              className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <option value="ADVANCE">Financial Advance Payment (Issue Cash)</option>
-              <option value="UNIFORM">Uniform / Safety Kit Deduction</option>
-            </select>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-1">
+          <div className="bg-muted/40 dark:bg-muted/20 p-4 rounded-2xl border space-y-3.5">
+            {/* Category Select */}
+            <div className="space-y-1.5">
+              <Label htmlFor="category" className="text-xs font-semibold">Entry Category *</Label>
+              <select
+                id="category"
+                {...register("category")}
+                className="w-full h-10 rounded-xl border border-input/80 bg-background px-3 py-2 text-sm shadow-2xs transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <option value="ADVANCE">Financial Advance Payment (Issue Cash)</option>
+                <option value="UNIFORM">Uniform / Safety Kit Deduction</option>
+              </select>
+            </div>
+
+            {/* Amount Input */}
+            <div className="space-y-1.5">
+              <Label htmlFor="amount" className="text-xs font-semibold">Amount (₹) *</Label>
+              <Input
+                id="amount"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="e.g. 1000"
+                {...register("amount", { valueAsNumber: true })}
+              />
+              {errors.amount && (
+                <p className="text-[11px] text-destructive">{errors.amount.message}</p>
+              )}
+            </div>
+
+            {/* Transaction Date Input */}
+            <div className="space-y-1.5">
+              <Label htmlFor="date" className="text-xs font-semibold">Transaction Date *</Label>
+              <Input id="date" type="date" {...register("date")} />
+              {errors.date && (
+                <p className="text-[11px] text-destructive">{errors.date.message}</p>
+              )}
+            </div>
+
+            {/* Notes Input */}
+            <div className="space-y-1.5">
+              <Label htmlFor="notes" className="text-xs font-semibold">Notes / Reason (Optional)</Label>
+              <Input
+                id="notes"
+                placeholder="e.g. Safety boots and jacket issued"
+                {...register("notes")}
+              />
+            </div>
           </div>
 
-          {/* Amount Input */}
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount (₹) *</Label>
-            <Input
-              id="amount"
-              type="number"
-              min="1"
-              step="1"
-              placeholder="e.g. 1000"
-              {...register("amount", { valueAsNumber: true })}
-            />
-            {errors.amount && (
-              <p className="text-xs text-destructive">{errors.amount.message}</p>
-            )}
-          </div>
-
-          {/* Transaction Date Input */}
-          <div className="space-y-2">
-            <Label htmlFor="date">Transaction Date *</Label>
-            <Input id="date" type="date" {...register("date")} />
-            {errors.date && (
-              <p className="text-xs text-destructive">{errors.date.message}</p>
-            )}
-          </div>
-
-          {/* Notes Input */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes / Reason (Optional)</Label>
-            <Input
-              id="notes"
-              placeholder="e.g. Safety boots and jacket issued"
-              {...register("notes")}
-            />
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-4 border-t mt-4">
+          <div className="flex justify-end space-x-2 pt-3 border-t">
             <Button
               variant="outline"
               type="button"
               onClick={() => onOpenChange(false)}
+              className="rounded-full px-5 text-xs font-semibold"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
+            <Button
+              type="submit"
+              disabled={mutation.isPending}
+              className="rounded-full px-6 text-xs font-bold shadow-md"
+            >
               {mutation.isPending ? "Recording..." : "Save Entry"}
             </Button>
           </div>

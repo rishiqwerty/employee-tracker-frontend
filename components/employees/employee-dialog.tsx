@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { User, MapPin, Briefcase, Calendar, Phone, CreditCard, Building2, ShieldCheck } from "lucide-react";
 
 import { Employee, EmployeeCreate, EmployeeUpdate, employeesService } from "@/services/employees.service";
 import { sitesService } from "@/services/sites.service";
@@ -14,6 +15,7 @@ import { assignmentsService, EmployeeTransfer } from "@/services/assignments.ser
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { IosSwitch } from "@/components/ui/ios-switch";
 import {
   Dialog,
   DialogContent,
@@ -59,21 +61,21 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
   // Fetch available sites for the active company
   const { data: sites = [] } = useQuery({
     queryKey: ["sites", activeCompanyId],
-    queryFn: () => activeCompanyId ? sitesService.getSites(activeCompanyId) : Promise.resolve([]),
+    queryFn: () => (activeCompanyId ? sitesService.getSites(activeCompanyId) : Promise.resolve([])),
     enabled: !!activeCompanyId && open,
   });
 
   // Fetch available job roles for the active company
   const { data: jobRoles = [] } = useQuery({
     queryKey: ["job-roles", activeCompanyId],
-    queryFn: () => activeCompanyId ? jobRolesService.getJobRoles(activeCompanyId) : Promise.resolve([]),
+    queryFn: () => (activeCompanyId ? jobRolesService.getJobRoles(activeCompanyId) : Promise.resolve([])),
     enabled: !!activeCompanyId && open,
   });
 
   // Fetch active assignment for editing employee
   const { data: activeAssignment } = useQuery({
     queryKey: ["assignments", employee?.id, "active"],
-    queryFn: () => employee ? assignmentsService.getActiveAssignment(employee.id) : Promise.resolve(null),
+    queryFn: () => (employee ? assignmentsService.getActiveAssignment(employee.id) : Promise.resolve(null)),
     enabled: !!employee && open,
   });
 
@@ -81,6 +83,8 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<EmployeeFormValues>({
     resolver: zodResolver(employeeSchema),
@@ -224,136 +228,176 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Employee" : "Add Employee"}</DialogTitle>
-          <DialogDescription>
-            {isEditing ? "Update employee details, site assignment, and job role." : "Enter details for the new employee."}
-          </DialogDescription>
+      <DialogContent className="sm:max-w-[720px] max-h-[88vh] overflow-y-auto p-6">
+        <DialogHeader className="border-b pb-3">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/10 text-primary p-2.5 rounded-2xl">
+              <User className="h-5 w-5" />
+            </div>
+            <div>
+              <DialogTitle className="text-xl font-bold">{isEditing ? "Edit Employee Profile" : "Register New Employee"}</DialogTitle>
+              <DialogDescription className="text-xs">
+                {isEditing ? "Update employee details, deployment site, and job role." : "Fill in worker details and assign them to an active site."}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Core Details */}
-            {isEditing ? (
-              <div className="space-y-2">
-                <Label htmlFor="employee_code">Employee Code</Label>
-                <Input id="employee_code" {...register("employee_code")} disabled className="bg-muted font-mono font-semibold" />
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 pt-1">
+          {/* iOS Inset Group 1: Core Worker Profile */}
+          <div className="bg-muted/40 dark:bg-muted/20 p-4 rounded-2xl border space-y-3.5">
+            <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <User className="h-3.5 w-3.5 text-primary" />
+              Core Worker Details
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {isEditing ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="employee_code" className="text-xs font-semibold">Employee Code</Label>
+                  <Input id="employee_code" {...register("employee_code")} disabled className="bg-muted/70 font-mono font-semibold text-xs" />
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label htmlFor="employee_code" className="text-xs font-semibold">Employee Code</Label>
+                  <Input id="employee_code" value="Auto-generated (e.g. E0001)" disabled className="bg-muted/70 text-muted-foreground font-mono italic text-xs" />
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="full_name" className="text-xs font-semibold">Full Name *</Label>
+                <Input id="full_name" placeholder="e.g. Ramesh Kumar" {...register("full_name")} />
+                {errors.full_name && <p className="text-[11px] text-destructive">{errors.full_name.message}</p>}
               </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="employee_code">Employee Code</Label>
-                <Input id="employee_code" value="Auto-generated (e.g. E0001)" disabled className="bg-muted/70 text-muted-foreground font-mono italic text-xs" />
+
+              <div className="space-y-1.5">
+                <Label htmlFor="phone" className="text-xs font-semibold">Phone Number *</Label>
+                <Input id="phone" {...register("phone")} placeholder="+919876543210" />
+                {errors.phone && <p className="text-[11px] text-destructive">{errors.phone.message}</p>}
               </div>
-            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="full_name">Full Name *</Label>
-              <Input id="full_name" {...register("full_name")} />
-              {errors.full_name && <p className="text-xs text-destructive">{errors.full_name.message}</p>}
-            </div>
-
-            {/* Mandatory Deployment Fields */}
-            <div className="space-y-2">
-              <Label htmlFor="site_id">Site Assignment *</Label>
-              <select
-                id="site_id"
-                {...register("site_id")}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="" disabled>Select Site (Mandatory)</option>
-                {sites.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.city})
-                  </option>
-                ))}
-              </select>
-              {errors.site_id && <p className="text-xs text-destructive">{errors.site_id.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="job_role_id">Job Role / Designation *</Label>
-              <select
-                id="job_role_id"
-                {...register("job_role_id")}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="" disabled>Select Job Role (Mandatory)</option>
-                {jobRoles.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-              {errors.job_role_id && <p className="text-xs text-destructive">{errors.job_role_id.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="joining_date">Joining Date *</Label>
-              <Input id="joining_date" type="date" {...register("joining_date")} />
-              {errors.joining_date && <p className="text-xs text-destructive">{errors.joining_date.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number *</Label>
-              <Input id="phone" {...register("phone")} placeholder="+919876543210" />
-              {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
-            </div>
-
-            {/* Optional Details */}
-            <div className="space-y-2">
-              <Label htmlFor="father_name">Father&apos;s Name</Label>
-              <Input id="father_name" {...register("father_name")} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="dob">Date of Birth</Label>
-              <Input id="dob" type="date" {...register("dob")} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pan">PAN Number</Label>
-              <Input id="pan" {...register("pan")} placeholder="ABCDE1234F" />
-              {errors.pan && <p className="text-xs text-destructive">{errors.pan.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="aadhaar">Aadhaar Number</Label>
-              <Input id="aadhaar" {...register("aadhaar")} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bank_account">Bank Account No.</Label>
-              <Input id="bank_account" {...register("bank_account")} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="ifsc">IFSC Code</Label>
-              <Input id="ifsc" {...register("ifsc")} placeholder="SBIN0123456" />
-              {errors.ifsc && <p className="text-xs text-destructive">{errors.ifsc.message}</p>}
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="address">Address</Label>
-              <Input id="address" {...register("address")} />
+              <div className="space-y-1.5">
+                <Label htmlFor="joining_date" className="text-xs font-semibold">Joining Date *</Label>
+                <Input id="joining_date" type="date" {...register("joining_date")} />
+                {errors.joining_date && <p className="text-[11px] text-destructive">{errors.joining_date.message}</p>}
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-2 border-t">
-            <input 
-              type="checkbox" 
-              id="active" 
-              {...register("active")}
-              className="h-4 w-4 rounded border-gray-300" 
-            />
-            <Label htmlFor="active" className="cursor-pointer">Active Employee</Label>
+          {/* iOS Inset Group 2: Site & Designation Deployment */}
+          <div className="bg-primary/5 dark:bg-primary/10 p-4 rounded-2xl border border-primary/20 space-y-3.5">
+            <h4 className="text-[11px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5" />
+              Site Deployment & Role Assignment
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div className="space-y-1.5">
+                <Label htmlFor="site_id" className="text-xs font-semibold">Target Site *</Label>
+                <select
+                  id="site_id"
+                  {...register("site_id")}
+                  className="w-full h-10 rounded-xl border border-input/80 bg-background px-3 py-2 text-sm shadow-2xs transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <option value="" disabled>Select Site (Mandatory)</option>
+                  {sites.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.city})
+                    </option>
+                  ))}
+                </select>
+                {errors.site_id && <p className="text-[11px] text-destructive">{errors.site_id.message}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="job_role_id" className="text-xs font-semibold">Job Role / Designation *</Label>
+                <select
+                  id="job_role_id"
+                  {...register("job_role_id")}
+                  className="w-full h-10 rounded-xl border border-input/80 bg-background px-3 py-2 text-sm shadow-2xs transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <option value="" disabled>Select Job Role (Mandatory)</option>
+                  {jobRoles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.job_role_id && <p className="text-[11px] text-destructive">{errors.job_role_id.message}</p>}
+              </div>
+            </div>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+          {/* iOS Inset Group 3: Optional Identification & Banking */}
+          <div className="bg-muted/40 dark:bg-muted/20 p-4 rounded-2xl border space-y-3.5">
+            <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <CreditCard className="h-3.5 w-3.5 text-primary" />
+              Identification & Banking (Optional)
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div className="space-y-1.5">
+                <Label htmlFor="father_name" className="text-xs font-semibold">Father&apos;s Name</Label>
+                <Input id="father_name" {...register("father_name")} />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="dob" className="text-xs font-semibold">Date of Birth</Label>
+                <Input id="dob" type="date" {...register("dob")} />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pan" className="text-xs font-semibold">PAN Number</Label>
+                <Input id="pan" {...register("pan")} placeholder="ABCDE1234F" />
+                {errors.pan && <p className="text-[11px] text-destructive">{errors.pan.message}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="aadhaar" className="text-xs font-semibold">Aadhaar Number</Label>
+                <Input id="aadhaar" {...register("aadhaar")} />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="bank_account" className="text-xs font-semibold">Bank Account No.</Label>
+                <Input id="bank_account" {...register("bank_account")} />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="ifsc" className="text-xs font-semibold">IFSC Code</Label>
+                <Input id="ifsc" {...register("ifsc")} placeholder="SBIN0123456" />
+                {errors.ifsc && <p className="text-[11px] text-destructive">{errors.ifsc.message}</p>}
+              </div>
+
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="address" className="text-xs font-semibold">Residential Address</Label>
+                <Input id="address" {...register("address")} />
+              </div>
+            </div>
+          </div>
+
+          <IosSwitch
+            id="active"
+            checked={watch("active")}
+            onCheckedChange={(val) => setValue("active", val)}
+            label="Worker Account Status"
+          />
+
+          {/* Footer Pill Action Buttons */}
+          <div className="flex justify-end space-x-2 pt-4 border-t">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="rounded-full px-5 text-xs font-semibold"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Saving..." : "Save"}
+            <Button
+              type="submit"
+              disabled={mutation.isPending}
+              className="rounded-full px-6 text-xs font-bold shadow-md"
+            >
+              {mutation.isPending ? "Saving Profile..." : "Save Employee"}
             </Button>
           </div>
         </form>

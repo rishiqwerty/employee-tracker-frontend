@@ -6,11 +6,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { MapPin } from "lucide-react";
 
 import { Site, SiteCreate, SiteUpdate, sitesService } from "@/services/sites.service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { IosSwitch } from "@/components/ui/ios-switch";
 import {
   Dialog,
   DialogContent,
@@ -21,13 +23,12 @@ import {
 import { useCompanyStore } from "@/store/useCompanyStore";
 
 const siteSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters").max(100),
-  address: z.string().min(5, "Address must be at least 5 characters").max(255),
-  city: z.string().min(2, "City is required").max(100),
-  state: z.string().min(2, "State is required").max(100),
-  contact_person: z.string().max(100).optional().or(z.literal('')),
-  contact_number: z.string().regex(/^\+?[0-9]{10,15}$/, "Invalid phone format").optional().or(z.literal('')),
-  active: z.boolean(),
+  name: z.string().min(2, "Site name must be at least 2 characters").max(100),
+  address: z.string().optional(),
+  city: z.string().min(1, "City is required").max(100),
+  state: z.string().min(1, "State is required").max(100),
+  contact_person: z.string().optional(),
+  is_active: z.boolean(),
 });
 
 type SiteFormValues = z.infer<typeof siteSchema>;
@@ -47,6 +48,8 @@ export function SiteDialog({ open, onOpenChange, site }: SiteDialogProps) {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<SiteFormValues>({
     resolver: zodResolver(siteSchema),
@@ -56,8 +59,7 @@ export function SiteDialog({ open, onOpenChange, site }: SiteDialogProps) {
       city: "",
       state: "",
       contact_person: "",
-      contact_number: "",
-      active: true,
+      is_active: true,
     },
   });
 
@@ -66,12 +68,11 @@ export function SiteDialog({ open, onOpenChange, site }: SiteDialogProps) {
       if (site) {
         reset({
           name: site.name,
-          address: site.address,
+          address: site.address || "",
           city: site.city,
           state: site.state,
           contact_person: site.contact_person || "",
-          contact_number: site.contact_number || "",
-          active: site.active,
+          is_active: site.active,
         });
       } else {
         reset({
@@ -80,8 +81,7 @@ export function SiteDialog({ open, onOpenChange, site }: SiteDialogProps) {
           city: "",
           state: "",
           contact_person: "",
-          contact_number: "",
-          active: true,
+          is_active: true,
         });
       }
     }
@@ -90,36 +90,29 @@ export function SiteDialog({ open, onOpenChange, site }: SiteDialogProps) {
   const mutation = useMutation({
     mutationFn: (data: SiteFormValues) => {
       if (!activeCompanyId) throw new Error("No active company selected");
-      
-      const payload: SiteCreate = {
+
+      const payload = {
         ...data,
+        address: data.address || null,
         contact_person: data.contact_person || null,
-        contact_number: data.contact_number || null,
-      };
+      } as SiteCreate | SiteUpdate;
 
       if (isEditing) {
         return sitesService.updateSite(activeCompanyId, site.id, payload as SiteUpdate);
       } else {
-        return sitesService.createSite(activeCompanyId, payload);
+        return sitesService.createSite(activeCompanyId, payload as SiteCreate);
       }
     },
     onSuccess: () => {
-      toast.success(`Site ${isEditing ? 'updated' : 'created'} successfully`);
-      queryClient.invalidateQueries({ queryKey: ['sites', activeCompanyId] });
+      toast.success(`Site ${isEditing ? "updated" : "created"} successfully`);
+      queryClient.invalidateQueries({ queryKey: ["sites", activeCompanyId] });
       onOpenChange(false);
     },
     onError: (error: Error | import("axios").AxiosError) => {
       let msg = "An error occurred";
       if ("isAxiosError" in error && error.isAxiosError) {
-        const errorData = error.response?.data as { detail?: string | Record<string, unknown>[] };
-        if (typeof errorData?.detail === 'string') {
-          msg = errorData.detail;
-        } else if (Array.isArray(errorData?.detail)) {
-          const firstError = errorData.detail[0] as Record<string, unknown>;
-          msg = (firstError?.msg as string) || msg;
-        }
-      } else {
-        msg = error.message;
+        const errorData = error.response?.data as { detail?: string };
+        msg = errorData?.detail || msg;
       }
       toast.error(msg);
     },
@@ -131,67 +124,76 @@ export function SiteDialog({ open, onOpenChange, site }: SiteDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Site" : "Add Site"}</DialogTitle>
-          <DialogDescription>
-            {isEditing ? "Update site details here." : "Enter details for the new site."}
-          </DialogDescription>
+      <DialogContent className="sm:max-w-[480px] p-6">
+        <DialogHeader className="border-b pb-3">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/10 text-primary p-2.5 rounded-2xl">
+              <MapPin className="h-5 w-5" />
+            </div>
+            <div>
+              <DialogTitle className="text-lg font-bold">{isEditing ? "Edit Construction Site" : "Add New Site"}</DialogTitle>
+              <DialogDescription className="text-xs">
+                {isEditing ? "Update site location and contact supervisor." : "Register a new project site for workforce deployment."}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Site Name *</Label>
-            <Input id="name" {...register("name")} placeholder="Main Factory" />
-            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="address">Address *</Label>
-            <Input id="address" {...register("address")} />
-            {errors.address && <p className="text-xs text-destructive">{errors.address.message}</p>}
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="city">City *</Label>
-              <Input id="city" {...register("city")} />
-              {errors.city && <p className="text-xs text-destructive">{errors.city.message}</p>}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-1">
+          <div className="bg-muted/40 dark:bg-muted/20 p-4 rounded-2xl border space-y-3.5">
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-xs font-semibold">Site Name *</Label>
+              <Input id="name" placeholder="e.g. Metro Line Phase 2" {...register("name")} />
+              {errors.name && <p className="text-[11px] text-destructive">{errors.name.message}</p>}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="state">State *</Label>
-              <Input id="state" {...register("state")} />
-              {errors.state && <p className="text-xs text-destructive">{errors.state.message}</p>}
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="contact_person">Contact Person</Label>
-              <Input id="contact_person" {...register("contact_person")} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="city" className="text-xs font-semibold">City *</Label>
+                <Input id="city" placeholder="e.g. Mumbai" {...register("city")} />
+                {errors.city && <p className="text-[11px] text-destructive">{errors.city.message}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="state" className="text-xs font-semibold">State *</Label>
+                <Input id="state" placeholder="e.g. Maharashtra" {...register("state")} />
+                {errors.state && <p className="text-[11px] text-destructive">{errors.state.message}</p>}
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="contact_number">Contact Number</Label>
-              <Input id="contact_number" {...register("contact_number")} placeholder="+91..." />
-              {errors.contact_number && <p className="text-xs text-destructive">{errors.contact_number.message}</p>}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="address" className="text-xs font-semibold">Full Address</Label>
+              <Input id="address" placeholder="Sector / Street Address" {...register("address")} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="contact_person" className="text-xs font-semibold">Site Supervisor / Contact</Label>
+              <Input id="contact_person" placeholder="Manager Name / Phone" {...register("contact_person")} />
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-2 border-t">
-            <input 
-              type="checkbox" 
-              id="active" 
-              {...register("active")}
-              className="h-4 w-4 rounded border-gray-300" 
-            />
-            <Label htmlFor="active" className="cursor-pointer">Active Site</Label>
-          </div>
+          <IosSwitch
+            id="is_active"
+            checked={watch("is_active")}
+            onCheckedChange={(val) => setValue("is_active", val)}
+            label="Active Site Operational Status"
+          />
 
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+          <div className="flex justify-end space-x-2 pt-3 border-t">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="rounded-full px-5 text-xs font-semibold"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Saving..." : "Save"}
+            <Button
+              type="submit"
+              disabled={mutation.isPending}
+              className="rounded-full px-6 text-xs font-bold shadow-md"
+            >
+              {mutation.isPending ? "Saving..." : "Save Site"}
             </Button>
           </div>
         </form>
