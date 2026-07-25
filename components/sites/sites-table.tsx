@@ -9,7 +9,7 @@ import {
   getPaginationRowModel,
   getFilteredRowModel,
 } from "@tanstack/react-table";
-import { MoreHorizontal, Pencil, MapPin, IndianRupee } from "lucide-react";
+import { MoreHorizontal, Pencil, MapPin, IndianRupee, Eye } from "lucide-react";
 
 import { Site } from "@/services/sites.service";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/table";
 import { SiteDialog } from "./site-dialog";
 import { PayscaleDialog } from "./payscale-dialog";
+import { SiteDetailsDrawer } from "./site-details-drawer";
 
 interface SitesTableProps {
   data: Site[];
@@ -42,9 +43,12 @@ interface SitesTableProps {
 export function SitesTable({ data, isLoading }: SitesTableProps) {
   const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [siteDialogOpen, setSiteDialogOpen] = useState(false);
-  
+
   const [payscaleSite, setPayscaleSite] = useState<Site | null>(null);
   const [payscaleDialogOpen, setPayscaleDialogOpen] = useState(false);
+
+  const [detailsSite, setDetailsSite] = useState<Site | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
   const [globalFilter, setGlobalFilter] = useState("");
 
@@ -53,11 +57,20 @@ export function SitesTable({ data, isLoading }: SitesTableProps) {
       accessorKey: "name",
       header: "Site Name",
       cell: ({ row }) => (
-        <div className="flex items-center gap-2 font-medium">
-          <div className="bg-muted p-1 rounded-full">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-2 font-semibold">
+          <div className="bg-primary/10 text-primary p-1.5 rounded-md">
+            <MapPin className="h-4 w-4" />
           </div>
-          {row.getValue("name")}
+          <button
+            type="button"
+            onClick={() => {
+              setDetailsSite(row.original);
+              setDetailsDialogOpen(true);
+            }}
+            className="hover:underline text-left cursor-pointer"
+          >
+            {row.getValue("name")}
+          </button>
         </div>
       ),
     },
@@ -75,10 +88,10 @@ export function SitesTable({ data, isLoading }: SitesTableProps) {
       cell: ({ row }) => row.getValue("contact_person") || "-",
     },
     {
-      accessorKey: "active",
+      accessorKey: "is_active",
       header: "Status",
       cell: ({ row }) => {
-        const isActive = row.getValue("active") as boolean;
+        const isActive = row.getValue("is_active") as boolean;
         return (
           <Badge variant={isActive ? "default" : "secondary"}>
             {isActive ? "Active" : "Inactive"}
@@ -98,7 +111,17 @@ export function SitesTable({ data, isLoading }: SitesTableProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuLabel>Site Operations</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setDetailsSite(site);
+                    setDetailsDialogOpen(true);
+                  }}
+                >
+                  <Eye className="mr-2 h-4 w-4 text-primary" />
+                  View Crew & Details
+                </DropdownMenuItem>
+
                 <DropdownMenuItem
                   onClick={() => {
                     setEditingSite(site);
@@ -108,13 +131,14 @@ export function SitesTable({ data, isLoading }: SitesTableProps) {
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit Site
                 </DropdownMenuItem>
+
                 <DropdownMenuItem
                   onClick={() => {
                     setPayscaleSite(site);
                     setPayscaleDialogOpen(true);
                   }}
                 >
-                  <IndianRupee className="mr-2 h-4 w-4 text-green-600" />
+                  <IndianRupee className="mr-2 h-4 w-4 text-emerald-600" />
                   Manage Payscale
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -148,7 +172,7 @@ export function SitesTable({ data, isLoading }: SitesTableProps) {
         />
       </div>
 
-      <div className="rounded-md border bg-card">
+      <div className="rounded-xl border bg-card">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -171,13 +195,13 @@ export function SitesTable({ data, isLoading }: SitesTableProps) {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
                   Loading sites...
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow key={row.id} className="hover:bg-muted/50">
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -187,7 +211,7 @@ export function SitesTable({ data, isLoading }: SitesTableProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
                   No sites found.
                 </TableCell>
               </TableRow>
@@ -232,6 +256,12 @@ export function SitesTable({ data, isLoading }: SitesTableProps) {
         }}
         siteId={payscaleSite?.id || null}
         siteName={payscaleSite?.name}
+      />
+
+      <SiteDetailsDrawer
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+        site={detailsSite}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Save, Calendar, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Calendar, MapPin, Copy } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -13,6 +13,7 @@ import { assignmentsService, EmployeeSiteHistory } from "@/services/assignments.
 import {
   attendanceService,
   AttendanceStatus,
+  Attendance,
   BulkAttendanceMarkPayload,
 } from "@/services/attendance.service";
 
@@ -147,6 +148,45 @@ export default function AttendancePage() {
     });
     setAttendanceState(nextState);
     toast.info("Marked all workers as Present");
+  };
+
+  const handleCopyPreviousDay = async () => {
+    try {
+      const prev = new Date(selectedDate);
+      prev.setDate(prev.getDate() - 1);
+      const yesterdayStr = prev.toISOString().split("T")[0];
+
+      let yesterdayRecords: Attendance[] = [];
+      if (selectedSiteId === "ALL") {
+        if (sites.length > 0) {
+          const sitePromises = sites.map((s) => attendanceService.getSiteAttendance(s.id, yesterdayStr));
+          const dateResults = await Promise.all(sitePromises);
+          yesterdayRecords = dateResults.flat();
+        }
+      } else {
+        yesterdayRecords = await attendanceService.getSiteAttendance(selectedSiteId, yesterdayStr);
+      }
+
+      if (yesterdayRecords.length === 0) {
+        toast.warning(`No attendance records found for yesterday (${yesterdayStr})`);
+        return;
+      }
+
+      const nextState = { ...attendanceState };
+      let copiedCount = 0;
+
+      yesterdayRecords.forEach((record) => {
+        if (record.status) {
+          nextState[record.employee_id] = record.status;
+          copiedCount++;
+        }
+      });
+
+      setAttendanceState(nextState);
+      toast.success(`Copied ${copiedCount} worker records from yesterday (${yesterdayStr})`);
+    } catch {
+      toast.error("Failed to copy previous day attendance");
+    }
   };
 
   const handleDateChange = (offsetDays: number) => {
@@ -300,6 +340,18 @@ export default function AttendancePage() {
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
+
+          {/* Copy Yesterday's Attendance Helper */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyPreviousDay}
+            className="text-xs font-semibold gap-1.5"
+            title="Copy attendance entries from yesterday"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Copy Yesterday
+          </Button>
 
           {/* Save Attendance Primary Action */}
           <Button

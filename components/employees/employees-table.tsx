@@ -209,36 +209,53 @@ export function EmployeesTable({ data, isLoading }: EmployeesTableProps) {
       cell: ({ row, table }) => {
         const meta = table.options.meta as TableMetaType;
         const employee = row.original;
+        const assignment = meta.assignmentMap.get(employee.id);
+
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => {
-                    meta.setEditingEmployee(employee);
-                    meta.setDialogOpen(true);
-                  }}
-                >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit Employee
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    meta.setAssigningEmployee(employee);
-                    meta.setAssignDialogOpen(true);
-                  }}
-                >
-                  <MapPin className="mr-2 h-4 w-4 text-primary" />
-                  Assign / Transfer Site
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs font-medium gap-1 px-2.5"
+              onClick={() => {
+                meta.setAssigningEmployee(employee);
+                meta.setAssignDialogOpen(true);
+              }}
+            >
+              <MapPin className="h-3.5 w-3.5 text-primary" />
+              {assignment ? "Transfer" : "Deploy"}
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Employee Management</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      meta.setEditingEmployee(employee);
+                      meta.setDialogOpen(true);
+                    }}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Details
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      meta.setAssigningEmployee(employee);
+                      meta.setAssignDialogOpen(true);
+                    }}
+                  >
+                    <MapPin className="mr-2 h-4 w-4 text-primary" />
+                    Assign / Transfer Site
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { User, MapPin, Briefcase, Plus } from "lucide-react";
+import { User, MapPin, Briefcase, Plus, FileText } from "lucide-react";
 
 import { PayrollRecord } from "@/services/payroll.service";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AddExpenseDialog } from "./add-expense-dialog";
+import { PayslipModal } from "./payslip-modal";
 
 interface PayrollTableProps {
   records: PayrollRecord[];
@@ -23,6 +24,7 @@ interface PayrollTableProps {
   onSearchChange: (val: string) => void;
   isLoading: boolean;
   defaultDate?: string;
+  companyName?: string;
 }
 
 export function PayrollTable({
@@ -31,9 +33,13 @@ export function PayrollTable({
   onSearchChange,
   isLoading,
   defaultDate,
+  companyName = "",
 }: PayrollTableProps) {
   const [selectedRecord, setSelectedRecord] = useState<PayrollRecord | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+
+  const [payslipRecord, setPayslipRecord] = useState<PayrollRecord | null>(null);
+  const [payslipDialogOpen, setPayslipDialogOpen] = useState(false);
 
   const filteredRecords = useMemo(() => {
     if (!searchFilter.trim()) return records;
@@ -52,7 +58,12 @@ export function PayrollTable({
 
   const handleOpenAddExpense = (record: PayrollRecord) => {
     setSelectedRecord(record);
-    setDialogOpen(true);
+    setExpenseDialogOpen(true);
+  };
+
+  const handleOpenPayslip = (record: PayrollRecord) => {
+    setPayslipRecord(record);
+    setPayslipDialogOpen(true);
   };
 
   return (
@@ -90,7 +101,7 @@ export function PayrollTable({
               <TableHead className="text-right font-bold text-emerald-600 dark:text-emerald-400">
                 Net Pay (₹)
               </TableHead>
-              <TableHead className="text-center w-[130px]">Action</TableHead>
+              <TableHead className="text-center w-[160px]">Action</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -193,17 +204,31 @@ export function PayrollTable({
                     )}
                   </TableCell>
 
-                  {/* Add Entry Action Button */}
+                  {/* Action Buttons: Add Entry & View Payslip */}
                   <TableCell className="text-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-xs gap-1 font-medium"
-                      onClick={() => handleOpenAddExpense(row)}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      Add Entry
-                    </Button>
+                    <div className="flex items-center justify-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs gap-1 font-medium px-2"
+                        onClick={() => handleOpenAddExpense(row)}
+                        title="Add Advance or Uniform Entry"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Entry
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs gap-1 font-medium px-2 text-primary"
+                        onClick={() => handleOpenPayslip(row)}
+                        title="Generate Official Payslip"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        Payslip
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -214,10 +239,19 @@ export function PayrollTable({
 
       {/* Add Expense / Deduction Dialog */}
       <AddExpenseDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={expenseDialogOpen}
+        onOpenChange={setExpenseDialogOpen}
         record={selectedRecord}
         defaultDate={defaultDate}
+      />
+
+      {/* Official Salary Slip Modal */}
+      <PayslipModal
+        open={payslipDialogOpen}
+        onOpenChange={setPayslipDialogOpen}
+        record={payslipRecord}
+        companyName={companyName}
+        periodLabel={defaultDate || "Current Period"}
       />
     </div>
   );

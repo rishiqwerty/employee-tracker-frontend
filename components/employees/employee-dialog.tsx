@@ -24,7 +24,7 @@ import {
 import { useCompanyStore } from "@/store/useCompanyStore";
 
 const employeeSchema = z.object({
-  employee_code: z.string().min(1, "Employee code is required").max(50),
+  employee_code: z.string().optional(),
   full_name: z.string().min(2, "Name must be at least 2 characters").max(100),
   site_id: z.string().min(1, "Site assignment is mandatory"),
   job_role_id: z.string().min(1, "Job Role is mandatory"),
@@ -159,7 +159,7 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
       if (!activeCompanyId) throw new Error("No active company selected");
 
       const payload = {
-        employee_code: data.employee_code,
+        employee_code: isEditing ? data.employee_code : undefined,
         full_name: data.full_name,
         phone: data.phone,
         joining_date: data.joining_date,
@@ -234,11 +234,17 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Core Details */}
-            <div className="space-y-2">
-              <Label htmlFor="employee_code">Employee Code *</Label>
-              <Input id="employee_code" {...register("employee_code")} />
-              {errors.employee_code && <p className="text-xs text-destructive">{errors.employee_code.message}</p>}
-            </div>
+            {isEditing ? (
+              <div className="space-y-2">
+                <Label htmlFor="employee_code">Employee Code</Label>
+                <Input id="employee_code" {...register("employee_code")} disabled className="bg-muted font-mono font-semibold" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="employee_code">Employee Code</Label>
+                <Input id="employee_code" value="Auto-generated (e.g. E0001)" disabled className="bg-muted/70 text-muted-foreground font-mono italic text-xs" />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="full_name">Full Name *</Label>
