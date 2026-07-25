@@ -3,7 +3,7 @@ import { api } from './api';
 export interface Payscale {
   id: string;
   site_id: string;
-  role: string;
+  job_role_id: string;
   daily_wage: number;
   overtime_rate: number;
   effective_from: string; // YYYY-MM-DD
@@ -14,7 +14,7 @@ export interface Payscale {
 
 export interface PayscaleCreate {
   site_id: string;
-  role: string;
+  job_role_id: string;
   daily_wage: number;
   overtime_rate: number;
   effective_from: string;
@@ -23,9 +23,9 @@ export interface PayscaleCreate {
 export type PayscaleUpdate = Partial<Omit<PayscaleCreate, 'site_id'>>;
 
 export const payscalesService = {
-  getActivePayscales: async (siteId: string, role?: string): Promise<Payscale[]> => {
+  getActivePayscales: async (siteId: string, jobRoleId?: string): Promise<Payscale[]> => {
     const response = await api.get<Payscale[]>(`/payscales/${siteId}/active`, {
-      params: role ? { role } : undefined,
+      params: jobRoleId ? { job_role_id: jobRoleId } : undefined,
     });
     return response.data;
   },

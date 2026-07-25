@@ -36,12 +36,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // If we get a 401 and we are not already on the login page, we can redirect or clear token
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('auth_token');
-        // We'll dispatch a global auth event or redirect to login here
-        // window.location.href = '/login';
+        localStorage.removeItem('auth-storage');
+        if (!window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);

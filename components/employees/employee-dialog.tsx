@@ -4,10 +4,13 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { Employee, EmployeeCreate, EmployeeUpdate, employeesService } from "@/services/employees.service";
+import { sitesService } from "@/services/sites.service";
+import { jobRolesService } from "@/services/job-roles.service";
+import { assignmentsService, EmployeeTransfer } from "@/services/assignments.service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,14 +26,16 @@ import { useCompanyStore } from "@/store/useCompanyStore";
 const employeeSchema = z.object({
   employee_code: z.string().min(1, "Employee code is required").max(50),
   full_name: z.string().min(2, "Name must be at least 2 characters").max(100),
-  father_name: z.string().optional(),
+  site_id: z.string().min(1, "Site assignment is mandatory"),
+  job_role_id: z.string().min(1, "Job Role is mandatory"),
+  joining_date: z.string().min(1, "Joining date is required"),
   phone: z.string().regex(/^\+?[0-9]{10,15}$/, "Invalid phone format").max(20),
+  father_name: z.string().optional(),
   alternate_phone: z.string().regex(/^\+?[0-9]{10,15}$/, "Invalid format").optional().or(z.literal('')),
   pan: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format").optional().or(z.literal('')),
   aadhaar: z.string().max(20).optional(),
   dob: z.string().optional(),
   address: z.string().max(255).optional(),
-  joining_date: z.string().min(1, "Joining date is required"),
   bank_account: z.string().max(50).optional(),
   ifsc: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC format").optional().or(z.literal('')),
   upi: z.string().max(100).optional(),
@@ -51,6 +56,27 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
   const { activeCompanyId } = useCompanyStore();
   const isEditing = !!employee;
 
+  // Fetch available sites for the active company
+  const { data: sites = [] } = useQuery({
+    queryKey: ["sites", activeCompanyId],
+    queryFn: () => activeCompanyId ? sitesService.getSites(activeCompanyId) : Promise.resolve([]),
+    enabled: !!activeCompanyId && open,
+  });
+
+  // Fetch available job roles for the active company
+  const { data: jobRoles = [] } = useQuery({
+    queryKey: ["job-roles", activeCompanyId],
+    queryFn: () => activeCompanyId ? jobRolesService.getJobRoles(activeCompanyId) : Promise.resolve([]),
+    enabled: !!activeCompanyId && open,
+  });
+
+  // Fetch active assignment for editing employee
+  const { data: activeAssignment } = useQuery({
+    queryKey: ["assignments", employee?.id, "active"],
+    queryFn: () => employee ? assignmentsService.getActiveAssignment(employee.id) : Promise.resolve(null),
+    enabled: !!employee && open,
+  });
+
   const {
     register,
     handleSubmit,
@@ -61,9 +87,11 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
     defaultValues: {
       employee_code: "",
       full_name: "",
-      father_name: "",
+      site_id: "",
+      job_role_id: "",
       phone: "",
       alternate_phone: "",
+      father_name: "",
       pan: "",
       aadhaar: "",
       dob: "",
@@ -83,9 +111,11 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
         reset({
           employee_code: employee.employee_code,
           full_name: employee.full_name,
-          father_name: employee.father_name || "",
+          site_id: activeAssignment?.site_id || (sites.length > 0 ? sites[0].id : ""),
+          job_role_id: activeAssignment?.job_role_id || (jobRoles.length > 0 ? jobRoles[0].id : ""),
           phone: employee.phone,
           alternate_phone: employee.alternate_phone || "",
+          father_name: employee.father_name || "",
           pan: employee.pan || "",
           aadhaar: employee.aadhaar || "",
           dob: employee.dob ? String(employee.dob) : "",
@@ -101,9 +131,11 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
         reset({
           employee_code: "",
           full_name: "",
-          father_name: "",
+          site_id: sites.length > 0 ? sites[0].id : "",
+          job_role_id: jobRoles.length > 0 ? jobRoles[0].id : "",
           phone: "",
           alternate_phone: "",
+          father_name: "",
           pan: "",
           aadhaar: "",
           dob: "",
@@ -117,14 +149,18 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
         });
       }
     }
-  }, [open, employee, reset]);
+  }, [open, employee, activeAssignment, sites, jobRoles, reset]);
 
   const mutation = useMutation({
-    mutationFn: (data: EmployeeFormValues) => {
+    mutationFn: async (data: EmployeeFormValues) => {
       if (!activeCompanyId) throw new Error("No active company selected");
-      
+
       const payload = {
-        ...data,
+        employee_code: data.employee_code,
+        full_name: data.full_name,
+        phone: data.phone,
+        joining_date: data.joining_date,
+        active: data.active,
         father_name: data.father_name || null,
         alternate_phone: data.alternate_phone || null,
         pan: data.pan || null,
@@ -137,15 +173,29 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
         emergency_contact: data.emergency_contact || null,
       } as EmployeeCreate | EmployeeUpdate;
 
+      let savedEmp: Employee;
       if (isEditing) {
-        return employeesService.updateEmployee(activeCompanyId, employee.id, payload as EmployeeUpdate);
+        savedEmp = await employeesService.updateEmployee(activeCompanyId, employee.id, payload as EmployeeUpdate);
       } else {
-        return employeesService.createEmployee(activeCompanyId, payload as EmployeeCreate);
+        savedEmp = await employeesService.createEmployee(activeCompanyId, payload as EmployeeCreate);
       }
+
+      // Assign / Transfer site and job role
+      if (data.site_id && data.job_role_id) {
+        const transferPayload: EmployeeTransfer = {
+          site_id: data.site_id,
+          job_role_id: data.job_role_id,
+          effective_from: data.joining_date,
+        };
+        await assignmentsService.transferEmployee(savedEmp.id, transferPayload);
+      }
+
+      return savedEmp;
     },
     onSuccess: () => {
       toast.success(`Employee ${isEditing ? 'updated' : 'created'} successfully`);
       queryClient.invalidateQueries({ queryKey: ['employees', activeCompanyId] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
       onOpenChange(false);
     },
     onError: (error: Error | import("axios").AxiosError) => {
@@ -175,7 +225,7 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit Employee" : "Add Employee"}</DialogTitle>
           <DialogDescription>
-            {isEditing ? "Update employee details here." : "Enter details for the new employee here."}
+            {isEditing ? "Update employee details, site assignment, and job role." : "Enter details for the new employee."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -186,11 +236,46 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
               <Input id="employee_code" {...register("employee_code")} />
               {errors.employee_code && <p className="text-xs text-destructive">{errors.employee_code.message}</p>}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="full_name">Full Name *</Label>
               <Input id="full_name" {...register("full_name")} />
               {errors.full_name && <p className="text-xs text-destructive">{errors.full_name.message}</p>}
+            </div>
+
+            {/* Mandatory Deployment Fields */}
+            <div className="space-y-2">
+              <Label htmlFor="site_id">Site Assignment *</Label>
+              <select
+                id="site_id"
+                {...register("site_id")}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="" disabled>Select Site (Mandatory)</option>
+                {sites.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.city})
+                  </option>
+                ))}
+              </select>
+              {errors.site_id && <p className="text-xs text-destructive">{errors.site_id.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="job_role_id">Job Role / Designation *</Label>
+              <select
+                id="job_role_id"
+                {...register("job_role_id")}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="" disabled>Select Job Role (Mandatory)</option>
+                {jobRoles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+              {errors.job_role_id && <p className="text-xs text-destructive">{errors.job_role_id.message}</p>}
             </div>
 
             <div className="space-y-2">

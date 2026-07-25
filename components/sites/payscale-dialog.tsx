@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Plus, IndianRupee } from "lucide-react";
 
 import { payscalesService, Payscale, PayscaleCreate } from "@/services/payscales.service";
+import { jobRolesService, JobRole } from "@/services/job-roles.service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,9 +21,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useCompanyStore } from "@/store/useCompanyStore";
 
 const payscaleSchema = z.object({
-  role: z.string().min(1, "Role/Position is required").max(100),
+  job_role_id: z.string().min(1, "Job Role is mandatory"),
   daily_wage: z.union([z.string(), z.number()]).transform(v => Number(v)).refine(v => v > 0, "Daily wage must be strictly greater than 0"),
   overtime_rate: z.union([z.string(), z.number()]).transform(v => Number(v)).refine(v => v >= 0, "Overtime rate cannot be negative"),
   effective_from: z.string().min(1, "Effective date is required"),
@@ -40,7 +42,17 @@ interface PayscaleDialogProps {
 
 export function PayscaleDialog({ open, onOpenChange, siteId, siteName }: PayscaleDialogProps) {
   const queryClient = useQueryClient();
+  const { activeCompanyId } = useCompanyStore();
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Fetch company job roles for selection and name lookup
+  const { data: jobRoles = [] } = useQuery({
+    queryKey: ["job-roles", activeCompanyId],
+    queryFn: () => activeCompanyId ? jobRolesService.getJobRoles(activeCompanyId) : Promise.resolve([]),
+    enabled: !!activeCompanyId && open,
+  });
+
+  const jobRolesMap = new Map<string, JobRole>(jobRoles.map((r) => [r.id, r]));
 
   // Fetch active payscales for this site across all roles
   const { data: activePayscales = [], isLoading: isFetching } = useQuery({
@@ -58,7 +70,7 @@ export function PayscaleDialog({ open, onOpenChange, siteId, siteName }: Payscal
   } = useForm<PayscaleFormInput, any, PayscaleFormOutput>({
     resolver: zodResolver(payscaleSchema),
     defaultValues: {
-      role: "General",
+      job_role_id: "",
       daily_wage: "0",
       overtime_rate: "0",
       effective_from: new Date().toISOString().split('T')[0],
@@ -66,7 +78,7 @@ export function PayscaleDialog({ open, onOpenChange, siteId, siteName }: Payscal
   });
 
   const handleEditRole = (payscale: Payscale) => {
-    setValue("role", payscale.role);
+    setValue("job_role_id", payscale.job_role_id);
     setValue("daily_wage", payscale.daily_wage.toString());
     setValue("overtime_rate", payscale.overtime_rate.toString());
     setValue("effective_from", new Date().toISOString().split('T')[0]);
@@ -75,7 +87,7 @@ export function PayscaleDialog({ open, onOpenChange, siteId, siteName }: Payscal
 
   const handleAddNew = () => {
     reset({
-      role: "",
+      job_role_id: jobRoles.length > 0 ? jobRoles[0].id : "",
       daily_wage: "0",
       overtime_rate: "0",
       effective_from: new Date().toISOString().split('T')[0],
@@ -88,7 +100,7 @@ export function PayscaleDialog({ open, onOpenChange, siteId, siteName }: Payscal
       if (!siteId) throw new Error("No site selected");
       const payload: PayscaleCreate = {
         site_id: siteId,
-        role: data.role,
+        job_role_id: data.job_role_id,
         daily_wage: data.daily_wage,
         overtime_rate: data.overtime_rate,
         effective_from: data.effective_from,
@@ -142,7 +154,7 @@ export function PayscaleDialog({ open, onOpenChange, siteId, siteName }: Payscal
             {/* List of active payscales */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-semibold">Active Payscales by Role</h4>
+                <h4 className="text-sm font-semibold">Active Payscales by Job Role</h4>
                 {!showAddForm && (
                   <Button size="sm" variant="outline" onClick={handleAddNew}>
                     <Plus className="h-4 w-4 mr-1" /> Add Role Payscale
@@ -156,26 +168,30 @@ export function PayscaleDialog({ open, onOpenChange, siteId, siteName }: Payscal
                 </div>
               ) : (
                 <div className="border rounded-lg divide-y bg-card">
-                  {activePayscales.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between p-3 text-sm">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="font-semibold">
-                          {p.role}
-                        </Badge>
-                        <div className="flex flex-col">
-                          <span className="font-medium text-foreground">
-                            ₹{p.daily_wage} / day
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            OT: ₹{p.overtime_rate}/hr • Effective: {p.effective_from}
-                          </span>
+                  {activePayscales.map((p) => {
+                    const roleObj = jobRolesMap.get(p.job_role_id);
+                    const roleName = roleObj ? roleObj.name : "Job Role";
+                    return (
+                      <div key={p.id} className="flex items-center justify-between p-3 text-sm">
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="font-semibold">
+                            {roleName}
+                          </Badge>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground">
+                              ₹{p.daily_wage} / day
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              OT: ₹{p.overtime_rate}/hr • Effective: {p.effective_from}
+                            </span>
+                          </div>
                         </div>
+                        <Button size="sm" variant="ghost" onClick={() => handleEditRole(p)}>
+                          Update
+                        </Button>
                       </div>
-                      <Button size="sm" variant="ghost" onClick={() => handleEditRole(p)}>
-                        Update
-                      </Button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -194,13 +210,20 @@ export function PayscaleDialog({ open, onOpenChange, siteId, siteName }: Payscal
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="role">Role / Position *</Label>
-                    <Input 
-                      id="role" 
-                      placeholder="e.g. Worker, Supervisor, Mason, Driver"
-                      {...register("role")} 
-                    />
-                    {errors.role && <p className="text-xs text-destructive">{errors.role.message}</p>}
+                    <Label htmlFor="job_role_id">Job Role / Position *</Label>
+                    <select
+                      id="job_role_id"
+                      {...register("job_role_id")}
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="" disabled>Select a Job Role (Mandatory)</option>
+                      {jobRoles.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.job_role_id && <p className="text-xs text-destructive">{errors.job_role_id.message}</p>}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
