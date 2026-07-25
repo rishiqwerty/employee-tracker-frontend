@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
   Building2, 
+  MapPin,
   LayoutDashboard, 
   Users, 
   CalendarClock, 
@@ -27,6 +28,11 @@ const routes = [
     label: "Companies",
     icon: Building2,
     href: "/companies",
+  },
+  {
+    label: "Sites",
+    icon: MapPin,
+    href: "/sites",
   },
   {
     label: "Employees",
