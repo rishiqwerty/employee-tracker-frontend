@@ -5,6 +5,14 @@ export interface LoginResponse {
   token_type: string;
 }
 
+export interface UserMe {
+  id: string;
+  email: string;
+  role: string;
+  company_id: string | null;
+  is_active: boolean;
+}
+
 export const authService = {
   login: async (email: string, password: string): Promise<LoginResponse> => {
     const formData = new URLSearchParams();
@@ -16,6 +24,11 @@ export const authService = {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
     });
+    return response.data;
+  },
+
+  getCurrentUser: async (): Promise<UserMe> => {
+    const response = await api.get<UserMe>('/users/me');
     return response.data;
   },
 };

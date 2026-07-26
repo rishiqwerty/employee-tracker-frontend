@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { companiesService } from "@/services/companies.service";
 import { useCompanyStore } from "@/store/useCompanyStore";
 import { CompanySelector } from "@/components/companies/company-selector";
+import { NotificationsPopover } from "./notifications-popover";
 
 export function Topbar() {
   const { toggle } = useSidebarStore();
@@ -63,11 +64,7 @@ export function Topbar() {
 
       {/* Right Section: Notifications + Theme + User Nav */}
       <div className="flex items-center gap-1 sm:gap-3 shrink-0">
-        <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9">
-          <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-          <span className="sr-only">Notifications</span>
-        </Button>
+        <NotificationsPopover />
         <ThemeToggle />
         <UserNav />
       </div>
