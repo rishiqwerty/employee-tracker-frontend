@@ -5,8 +5,8 @@ export interface Site {
   company_id: string;
   name: string;
   address: string;
-  city: string;
-  state: string;
+  city: string
+  state: string
   contact_person: string | null;
   contact_number: string | null;
   active: boolean;

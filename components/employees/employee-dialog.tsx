@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { User, MapPin, Briefcase, Calendar, Phone, CreditCard, Building2, ShieldCheck } from "lucide-react";
 
 import { Employee, EmployeeCreate, EmployeeUpdate, employeesService } from "@/services/employees.service";
+import { formatErrorMessage } from "@/lib/utils";
 import { sitesService } from "@/services/sites.service";
 import { jobRolesService } from "@/services/job-roles.service";
 import { assignmentsService, EmployeeTransfer } from "@/services/assignments.service";
@@ -205,20 +206,8 @@ export function EmployeeDialog({ open, onOpenChange, employee }: EmployeeDialogP
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
       onOpenChange(false);
     },
-    onError: (error: Error | import("axios").AxiosError) => {
-      let msg = "An error occurred";
-      if ("isAxiosError" in error && error.isAxiosError) {
-        const errorData = error.response?.data as { detail?: string | Record<string, unknown>[] };
-        if (typeof errorData?.detail === 'string') {
-          msg = errorData.detail;
-        } else if (Array.isArray(errorData?.detail)) {
-          const firstError = errorData.detail[0] as Record<string, unknown>;
-          msg = (firstError?.msg as string) || msg;
-        }
-      } else {
-        msg = error.message;
-      }
-      toast.error(msg);
+    onError: (error: unknown) => {
+      toast.error(formatErrorMessage(error, "Failed to save employee details"));
     },
   });
 

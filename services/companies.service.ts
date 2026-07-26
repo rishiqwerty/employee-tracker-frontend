@@ -17,14 +17,14 @@ export type CompanyUpdate = Partial<CompanyCreate>;
 
 export const companiesService = {
   getCompanies: async (skip = 0, limit = 100): Promise<Company[]> => {
-    const response = await api.get<Company[]>('/companies/', {
+    const response = await api.get<Company[]>('/companies', {
       params: { skip, limit },
     });
     return response.data;
   },
 
   createCompany: async (data: CompanyCreate): Promise<Company> => {
-    const response = await api.post<Company>('/companies/', data);
+    const response = await api.post<Company>('/companies', data);
     return response.data;
   },
 

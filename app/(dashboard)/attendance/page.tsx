@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Save, Calendar, MapPin, Copy } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { formatErrorMessage } from "@/lib/utils";
 
 import { useCompanyStore } from "@/store/useCompanyStore";
 import { employeesService } from "@/services/employees.service";
@@ -250,17 +251,8 @@ export default function AttendancePage() {
       toast.success("Attendance saved successfully!");
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
     },
-    onError: (error: Error | import("axios").AxiosError) => {
-      let msg = "Failed to save attendance";
-      if ("isAxiosError" in error && error.isAxiosError) {
-        const errorData = error.response?.data as { detail?: string };
-        if (typeof errorData?.detail === "string") {
-          msg = errorData.detail;
-        }
-      } else {
-        msg = error.message;
-      }
-      toast.error(msg);
+    onError: (error: unknown) => {
+      toast.error(formatErrorMessage(error, "Failed to save attendance"));
     },
   });
 

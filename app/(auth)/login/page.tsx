@@ -12,6 +12,7 @@ import { AxiosError } from "axios";
 
 import { authService } from "@/services/auth.service";
 import { configService } from "@/services/config.service";
+import { formatErrorMessage } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCompanyStore } from "@/store/useCompanyStore";
 import { useThemeStore, ColorTheme } from "@/store/useThemeStore";
@@ -74,13 +75,9 @@ export default function LoginPage() {
       toast.success(`Welcome back to ${brandName}!`);
       router.push("/");
     },
-    onError: (error: Error | AxiosError) => {
+    onError: (error: unknown) => {
       console.error(error);
-      let msg = "Login failed. Please check your credentials.";
-      if ("isAxiosError" in error && error.isAxiosError) {
-        const errorData = error.response?.data as { detail?: string };
-        msg = errorData?.detail || msg;
-      }
+      const msg = formatErrorMessage(error, "Login failed. Please check your credentials.");
       setServerError(msg);
       toast.error(msg);
     },

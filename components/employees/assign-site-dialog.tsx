@@ -12,6 +12,7 @@ import { Employee } from "@/services/employees.service";
 import { sitesService } from "@/services/sites.service";
 import { jobRolesService } from "@/services/job-roles.service";
 import { assignmentsService, EmployeeTransfer } from "@/services/assignments.service";
+import { formatErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -104,15 +105,8 @@ export function AssignSiteDialog({
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       onOpenChange(false);
     },
-    onError: (error: Error | import("axios").AxiosError) => {
-      let msg = "An error occurred";
-      if ("isAxiosError" in error && error.isAxiosError) {
-        const errorData = error.response?.data as { detail?: string };
-        msg = errorData?.detail || msg;
-      } else {
-        msg = error.message;
-      }
-      toast.error(msg);
+    onError: (error: unknown) => {
+      toast.error(formatErrorMessage(error, "Failed to assign site"));
     },
   });
 
