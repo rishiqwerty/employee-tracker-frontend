@@ -7,6 +7,7 @@ import * as z from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { IndianRupee } from "lucide-react";
+import { formatErrorMessage } from "@/lib/utils";
 
 import { advancesService } from "@/services/advances.service";
 import { deductionsService } from "@/services/deductions.service";
@@ -101,17 +102,8 @@ export function AddExpenseDialog({
       queryClient.invalidateQueries({ queryKey: ["backend-deductions"] });
       onOpenChange(false);
     },
-    onError: (error: Error | import("axios").AxiosError) => {
-      let msg = "Failed to record entry";
-      if ("isAxiosError" in error && error.isAxiosError) {
-        const errorData = error.response?.data as { detail?: string };
-        if (typeof errorData?.detail === "string") {
-          msg = errorData.detail;
-        }
-      } else {
-        msg = error.message;
-      }
-      toast.error(msg);
+    onError: (error: unknown) => {
+      toast.error(formatErrorMessage(error, "Failed to record entry"));
     },
   });
 

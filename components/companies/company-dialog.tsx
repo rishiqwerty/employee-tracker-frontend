@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Building2 } from "lucide-react";
 
 import { Company, CompanyCreate, CompanyUpdate, companiesService } from "@/services/companies.service";
+import { formatErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -101,13 +102,8 @@ export function CompanyDialog({ open, onOpenChange, company }: CompanyDialogProp
       queryClient.invalidateQueries({ queryKey: ['companies'] });
       onOpenChange(false);
     },
-    onError: (error: Error | import("axios").AxiosError) => {
-      let msg = "An error occurred";
-      if ("isAxiosError" in error && error.isAxiosError) {
-        const errorData = error.response?.data as { detail?: string };
-        msg = errorData?.detail || msg;
-      }
-      toast.error(msg);
+    onError: (error: unknown) => {
+      toast.error(formatErrorMessage(error, "Failed to save company details"));
     },
   });
 

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { MapPin } from "lucide-react";
 
 import { Site, SiteCreate, SiteUpdate, sitesService } from "@/services/sites.service";
+import { formatErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +25,7 @@ import { useCompanyStore } from "@/store/useCompanyStore";
 
 const siteSchema = z.object({
   name: z.string().min(2, "Site name must be at least 2 characters").max(100),
-  address: z.string().optional(),
+  address: z.string().min(1, "Address is required").max(255),
   city: z.string().min(1, "City is required").max(100),
   state: z.string().min(1, "State is required").max(100),
   contact_person: z.string().optional(),
@@ -93,7 +94,7 @@ export function SiteDialog({ open, onOpenChange, site }: SiteDialogProps) {
 
       const payload = {
         ...data,
-        address: data.address || null,
+        address: data.address,
         contact_person: data.contact_person || null,
       } as SiteCreate | SiteUpdate;
 
@@ -108,13 +109,8 @@ export function SiteDialog({ open, onOpenChange, site }: SiteDialogProps) {
       queryClient.invalidateQueries({ queryKey: ["sites", activeCompanyId] });
       onOpenChange(false);
     },
-    onError: (error: Error | import("axios").AxiosError) => {
-      let msg = "An error occurred";
-      if ("isAxiosError" in error && error.isAxiosError) {
-        const errorData = error.response?.data as { detail?: string };
-        msg = errorData?.detail || msg;
-      }
-      toast.error(msg);
+    onError: (error: unknown) => {
+      toast.error(formatErrorMessage(error, "Failed to save site details"));
     },
   });
 
@@ -162,8 +158,9 @@ export function SiteDialog({ open, onOpenChange, site }: SiteDialogProps) {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="address" className="text-xs font-semibold">Full Address</Label>
+              <Label htmlFor="address" className="text-xs font-semibold">Full Address *</Label>
               <Input id="address" placeholder="Sector / Street Address" {...register("address")} />
+              {errors.address && <p className="text-[11px] text-destructive">{errors.address.message}</p>}
             </div>
 
             <div className="space-y-1.5">

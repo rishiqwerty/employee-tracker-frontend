@@ -57,8 +57,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     if (dbUserTheme) {
       setColorTheme(dbUserTheme as ColorTheme);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dbUserTheme]);
+  }, [dbUserTheme, setColorTheme]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
