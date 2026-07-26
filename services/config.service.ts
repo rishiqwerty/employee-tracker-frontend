@@ -35,7 +35,8 @@ export const configService = {
    */
   getByKey: async (key: string, env = "production"): Promise<ConfigEntry | null> => {
     try {
-      const response = await api.get<ConfigEntry>(`/configs/key/${key}`, {
+      const sanitizedKey = key.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const response = await api.get<ConfigEntry>(`/configs/key/${sanitizedKey}`, {
         params: { env },
       });
       return response.data;
@@ -49,16 +50,17 @@ export const configService = {
    * Tries to fetch existing entry first; if found, patches it; otherwise creates it.
    */
   upsert: async (key: string, value: string, description?: string): Promise<ConfigEntry> => {
-    const existing = await configService.getByKey(key);
+    const sanitizedKey = key.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const existing = await configService.getByKey(sanitizedKey);
     if (existing) {
       const response = await api.patch<ConfigEntry>(`/configs/${existing.id}`, { value });
       return response.data;
     } else {
       const response = await api.post<ConfigEntry>('/configs/', {
-        key,
+        key: sanitizedKey,
         value,
         env: "production",
-        description: description || `App setting: ${key}`,
+        description: description || `App setting: ${sanitizedKey}`,
       });
       return response.data;
     }
@@ -99,5 +101,22 @@ export const configService = {
       configService.upsert("app_name", appName, "Application brand name displayed in header and sidebar"),
       configService.upsert("logo_url", logoUrl || "", "Application header logo URL or Base64 data URI"),
     ]);
+  },
+
+  /**
+   * Helper: Get logged-in user's saved color theme preference from DB config.
+   */
+  getUserTheme: async (email: string): Promise<string | null> => {
+    if (!email) return null;
+    const entry = await configService.getByKey(`user_theme_${email}`);
+    return entry?.value ?? null;
+  },
+
+  /**
+   * Helper: Save logged-in user's color theme preference to DB config.
+   */
+  saveUserTheme: async (email: string, theme: string): Promise<void> => {
+    if (!email) return;
+    await configService.upsert(`user_theme_${email}`, theme, `Color theme preference for user ${email}`);
   },
 };

@@ -14,6 +14,7 @@ import { authService } from "@/services/auth.service";
 import { configService } from "@/services/config.service";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCompanyStore } from "@/store/useCompanyStore";
+import { useThemeStore, ColorTheme } from "@/store/useThemeStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const router = useRouter();
   const { setToken } = useAuthStore();
+  const { setColorTheme } = useThemeStore();
   const { appBrandName, customLogoUrl } = useCompanyStore();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -58,8 +60,17 @@ export default function LoginPage() {
 
   const mutation = useMutation({
     mutationFn: (values: LoginFormValues) => authService.login(values.email, values.password),
-    onSuccess: (data, variables) => {
+    onSuccess: async (data, variables) => {
       setToken(data.access_token, variables.email);
+      // Fetch logged-in user's custom theme from DB before navigating
+      try {
+        const userTheme = await configService.getUserTheme(variables.email);
+        if (userTheme) {
+          setColorTheme(userTheme as ColorTheme);
+        }
+      } catch {
+        // Fallback silently if theme fetch fails
+      }
       toast.success(`Welcome back to ${brandName}!`);
       router.push("/");
     },
