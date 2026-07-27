@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
-import { Bell, Menu, Search } from "lucide-react";
+import { Bell, Menu, Search, Loader2 } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { UserNav } from "./user-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSidebarStore } from "@/store/useSidebarStore";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useIsFetching, useIsMutating } from "@tanstack/react-query";
 import { companiesService } from "@/services/companies.service";
 import { useCompanyStore } from "@/store/useCompanyStore";
 import { CompanySelector } from "@/components/companies/company-selector";
@@ -17,6 +17,10 @@ import { NotificationsPopover } from "./notifications-popover";
 export function Topbar() {
   const { toggle } = useSidebarStore();
   const { activeCompanyId, setActiveCompanyId } = useCompanyStore();
+
+  const isFetching = useIsFetching();
+  const isMutating = useIsMutating();
+  const isApiLoading = isFetching > 0 || isMutating > 0;
 
   const { data: companies = [] } = useQuery({
     queryKey: ["companies"],
@@ -33,7 +37,13 @@ export function Topbar() {
   }, [firstCompanyId, activeCompanyId, setActiveCompanyId]);
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background/95 backdrop-blur-xs px-2.5 sm:px-4 md:px-6">
+    <header className="relative sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background/95 backdrop-blur-xs px-2.5 sm:px-4 md:px-6">
+      {/* Top Loading Progress Line */}
+      {isApiLoading && (
+        <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-primary/20 overflow-hidden z-50">
+          <div className="h-full bg-primary animate-pulse w-full origin-left transition-all duration-300" />
+        </div>
+      )}
       {/* Left Section: Mobile Menu + Company Dropdown */}
       <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
         <Button
@@ -49,6 +59,13 @@ export function Topbar() {
         
         {/* Sleek Mobile-Responsive Company Selector Dropdown */}
         <CompanySelector />
+
+        {isApiLoading && (
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-primary bg-primary/10 rounded-full border border-primary/20 animate-pulse">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>Syncing...</span>
+          </div>
+        )}
         
         <div className="hidden items-center gap-2 md:flex">
           <div className="relative">

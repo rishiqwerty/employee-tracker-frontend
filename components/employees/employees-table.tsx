@@ -37,8 +37,9 @@ import {
 } from "@/components/ui/table";
 import { EmployeeDialog } from "./employee-dialog";
 import { AssignSiteDialog } from "./assign-site-dialog";
-import { useCompanyStore } from "@/store/useCompanyStore";
 import { TablePagination } from "@/components/ui/table-pagination";
+import { TableLoadingState } from "@/components/ui/table-loading-state";
+import { useCompanyStore } from "@/store/useCompanyStore";
 
 interface EmployeesTableProps {
   data: Employee[];
@@ -349,11 +350,7 @@ export function EmployeesTable({ data, isLoading }: EmployeesTableProps) {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  Loading employees...
-                </TableCell>
-              </TableRow>
+              <TableLoadingState colSpan={columns.length} message="Loading employee roster..." />
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
