@@ -12,7 +12,8 @@ import {
   Clock, 
   Building2,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  AlertTriangle
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -149,6 +150,31 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      {/* Unmarked Attendance Warning Banner */}
+      {!isLoading && metrics.unmarkedCount > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 p-4 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="bg-amber-500/20 text-amber-600 dark:text-amber-400 p-2.5 rounded-xl shrink-0">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm">Attendance Pending for Today ({todayStr})</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {metrics.unmarkedCount} out of {metrics.totalWorkers} workers have not been marked for today&apos;s shift yet.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => window.location.href = "/attendance"}
+            size="sm"
+            className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-xl shadow-xs shrink-0 gap-1.5"
+          >
+            <CalendarClock className="h-4 w-4" />
+            Mark Today&apos;s Attendance
+          </Button>
+        </div>
+      )}
 
       {/* KPI Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

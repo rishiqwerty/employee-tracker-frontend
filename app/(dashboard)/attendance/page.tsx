@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Save, Calendar, MapPin, Copy } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Calendar, MapPin, Copy, AlertTriangle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { formatErrorMessage } from "@/lib/utils";
@@ -19,6 +19,7 @@ import {
 } from "@/services/attendance.service";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { AttendanceStats, AttendanceStatusFilter } from "@/components/attendance/attendance-stats";
 import { AttendanceSheetTable } from "@/components/attendance/attendance-sheet-table";
 
@@ -113,6 +114,39 @@ export default function AttendancePage() {
 
     setAttendanceState(initialState);
   }, [existingAttendanceKey]);
+
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const isToday = selectedDate === todayStr;
+
+  // Calculate if there are unsaved attendance edits
+  const hasUnsavedChanges = useMemo(() => {
+    if (isLoadingAttendance) return false;
+    const savedMap = new Map<string, AttendanceStatus>();
+    existingAttendance.forEach((record) => {
+      savedMap.set(record.employee_id, record.status);
+    });
+
+    for (const emp of siteEmployees) {
+      const currentStatus = attendanceState[emp.id];
+      const savedStatus = savedMap.get(emp.id);
+      if (currentStatus !== savedStatus) {
+        return true;
+      }
+    }
+    return false;
+  }, [existingAttendance, attendanceState, siteEmployees, isLoadingAttendance]);
+
+  // Warn user before leaving page if there are unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   // Status counts for summary stats
   const statusCounts = useMemo(() => {
@@ -356,6 +390,64 @@ export default function AttendancePage() {
           </Button>
         </div>
       </div>
+
+      {/* ── 1. Unsaved Changes Warning Banner ── */}
+      {hasUnsavedChanges && (
+        <div className="bg-amber-500/15 border-2 border-amber-500/40 text-amber-900 dark:text-amber-200 p-4 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-md animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="bg-amber-500/20 text-amber-600 dark:text-amber-400 p-2.5 rounded-xl shrink-0">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                Unsaved Attendance Changes
+                <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-300 text-[10px]">
+                  Action Required
+                </Badge>
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                You have updated worker attendance records. Click &quot;Save Attendance&quot; to save your changes.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            size="sm"
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+            className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-md gap-1.5 shrink-0"
+          >
+            <Save className="h-4 w-4" />
+            {saveMutation.isPending ? "Saving..." : "Save Attendance Now"}
+          </Button>
+        </div>
+      )}
+
+      {/* ── 2. Today's Unmarked Attendance Warning Banner ── */}
+      {isToday && statusCounts.Unmarked > 0 && !hasUnsavedChanges && (
+        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 p-4 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="bg-amber-500/20 text-amber-600 dark:text-amber-400 p-2.5 rounded-xl shrink-0">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm">Today&apos;s Attendance Pending ({todayStr})</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {statusCounts.Unmarked} {statusCounts.Unmarked === 1 ? "worker has" : "workers have"} not been marked for today yet.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleMarkAllPresent}
+            className="border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 text-xs font-semibold rounded-xl shrink-0 gap-1.5"
+          >
+            Quick Mark All Present
+          </Button>
+        </div>
+      )}
 
       {/* Daily Summary Stats & Metric Filter Buttons */}
       <AttendanceStats

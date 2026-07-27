@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/table";
 import { CompanyDialog } from "./company-dialog";
 import { TablePagination } from "@/components/ui/table-pagination";
+import { TableLoadingState } from "@/components/ui/table-loading-state";
 
 interface CompaniesTableProps {
   data: Company[];
@@ -135,11 +136,7 @@ export function CompaniesTable({ data, isLoading }: CompaniesTableProps) {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  Loading...
-                </TableCell>
-              </TableRow>
+              <TableLoadingState colSpan={columns.length} message="Loading companies..." />
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>

@@ -8,6 +8,8 @@ import { JobRole } from "@/services/job-roles.service";
 import { EmployeeSiteHistory } from "@/services/assignments.service";
 import { AttendanceStatus } from "@/services/attendance.service";
 import { AttendanceStatusFilter } from "./attendance-stats";
+import { TablePagination } from "@/components/ui/table-pagination";
+import { TableLoadingState } from "@/components/ui/table-loading-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -146,11 +148,7 @@ export function AttendanceSheetTable({
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
-                  Loading attendance records...
-                </TableCell>
-              </TableRow>
+              <TableLoadingState colSpan={4} message="Loading attendance records & site assignments..." />
             ) : filteredEmployees.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">

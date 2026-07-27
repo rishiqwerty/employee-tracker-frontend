@@ -35,6 +35,7 @@ import { SiteDialog } from "./site-dialog";
 import { PayscaleDialog } from "./payscale-dialog";
 import { SiteDetailsDrawer } from "./site-details-drawer";
 import { TablePagination } from "@/components/ui/table-pagination";
+import { TableLoadingState } from "@/components/ui/table-loading-state";
 
 interface SitesTableProps {
   data: Site[];
@@ -195,11 +196,7 @@ export function SitesTable({ data, isLoading }: SitesTableProps) {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                  Loading sites...
-                </TableCell>
-              </TableRow>
+              <TableLoadingState colSpan={columns.length} message="Loading sites data..." />
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id} className="hover:bg-muted/50">
