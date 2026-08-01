@@ -12,12 +12,13 @@ import { useCompanyStore } from "@/store/useCompanyStore";
 
 export default function EmployeesPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const { activeCompanyId } = useCompanyStore();
+  const activeCompanyId = useCompanyStore((state) => state.activeCompanyId);
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees", activeCompanyId],
     queryFn: () => activeCompanyId ? employeesService.getEmployees(activeCompanyId) : Promise.resolve([]),
     enabled: !!activeCompanyId,
+    placeholderData: (previousData) => previousData,
   });
 
   if (!activeCompanyId) {
