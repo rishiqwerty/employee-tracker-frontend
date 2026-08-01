@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { User, Briefcase, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
+import { Site } from "@/services/sites.service";
 import { Employee } from "@/services/employees.service";
 import { JobRole } from "@/services/job-roles.service";
 import { EmployeeSiteHistory } from "@/services/assignments.service";
@@ -21,14 +22,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { MapPin } from "lucide-react";
 
 interface AttendanceSheetTableProps {
   employees: Employee[];
+  sites: Site[];
   jobRolesMap: Map<string, JobRole>;
   assignmentMap: Map<string, EmployeeSiteHistory>;
   attendanceState: Record<string, AttendanceStatus | undefined>;
+  employeeSiteState: Record<string, string>;
   statusFilter: AttendanceStatusFilter;
   onStatusChange: (employeeId: string, status: AttendanceStatus) => void;
+  onSiteChange: (employeeId: string, siteId: string) => void;
   onMarkAllPresent: () => void;
   searchFilter: string;
   onSearchChange: (value: string) => void;
@@ -70,11 +75,14 @@ const STATUS_OPTIONS: { status: AttendanceStatus; label: string; activeClass: st
 
 export function AttendanceSheetTable({
   employees,
+  sites,
   jobRolesMap,
   assignmentMap,
   attendanceState,
+  employeeSiteState,
   statusFilter,
   onStatusChange,
+  onSiteChange,
   onMarkAllPresent,
   searchFilter,
   onSearchChange,
@@ -142,16 +150,17 @@ export function AttendanceSheetTable({
             <TableRow>
               <TableHead className="w-[100px]">Code</TableHead>
               <TableHead>Worker Name</TableHead>
+              <TableHead className="min-w-[170px]">Site / Location</TableHead>
               <TableHead className="hidden md:table-cell">Job Role</TableHead>
-              <TableHead className="text-center w-[400px]">Attendance Status</TableHead>
+              <TableHead className="text-center w-[380px]">Attendance Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableLoadingState colSpan={4} message="Loading attendance records & site assignments..." />
+              <TableLoadingState colSpan={5} message="Loading attendance records & site assignments..." />
             ) : filteredEmployees.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
                   No workers match the selected filter ({statusFilter}).
                 </TableCell>
               </TableRow>
@@ -161,6 +170,10 @@ export function AttendanceSheetTable({
                 const roleObj = assignment ? jobRolesMap.get(assignment.job_role_id) : undefined;
                 const roleName = roleObj ? roleObj.name : "General Worker";
                 const currentStatus = attendanceState[employee.id]; // undefined if not yet filled
+
+                // Determine active site ID for this employee row
+                const defaultSiteId = assignment?.site_id || (sites.length > 0 ? sites[0].id : "");
+                const selectedSiteId = employeeSiteState[employee.id] || defaultSiteId;
 
                 return (
                   <TableRow key={employee.id} className="hover:bg-muted/50">
@@ -179,6 +192,24 @@ export function AttendanceSheetTable({
                             <Briefcase className="h-3 w-3" /> {roleName}
                           </span>
                         </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Interactive Site Dropdown Selector */}
+                    <TableCell>
+                      <div className="flex items-center gap-1.5 min-w-[150px]">
+                        <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <select
+                          value={selectedSiteId}
+                          onChange={(e) => onSiteChange(employee.id, e.target.value)}
+                          className="h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs font-medium shadow-xs transition-colors focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                        >
+                          {sites.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </TableCell>
 

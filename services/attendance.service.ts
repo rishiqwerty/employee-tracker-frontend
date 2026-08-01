@@ -15,6 +15,7 @@ export interface Attendance {
 export interface EmployeeAttendanceMark {
   employee_id: string;
   status: AttendanceStatus;
+  site_id?: string;
 }
 
 export interface BulkAttendanceMarkPayload {
