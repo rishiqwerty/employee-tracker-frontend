@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   ColumnDef,
   flexRender,
@@ -57,7 +57,7 @@ interface TableMetaType {
 }
 
 export function EmployeesTable({ data, isLoading }: EmployeesTableProps) {
-  const { activeCompanyId } = useCompanyStore();
+  const activeCompanyId = useCompanyStore((state) => state.activeCompanyId);
 
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -69,11 +69,19 @@ export function EmployeesTable({ data, isLoading }: EmployeesTableProps) {
   const [selectedSiteFilter, setSelectedSiteFilter] = useState<string>("ALL");
   const [selectedJobRoleFilter, setSelectedJobRoleFilter] = useState<string>("ALL");
 
+  // Reset filters to "ALL" when active company changes
+  useEffect(() => {
+    setSelectedSiteFilter("ALL");
+    setSelectedJobRoleFilter("ALL");
+    setGlobalFilter("");
+  }, [activeCompanyId]);
+
   // Fetch company sites for filtering and name lookup
-  const { data: sites = [] } = useQuery({
+  const { data: sites = [], isLoading: isLoadingSites } = useQuery({
     queryKey: ["sites", activeCompanyId],
     queryFn: () => activeCompanyId ? sitesService.getSites(activeCompanyId) : Promise.resolve([]),
     enabled: !!activeCompanyId,
+    placeholderData: (previousData) => previousData,
   });
 
   const sitesMap = useMemo(() => {
@@ -81,10 +89,11 @@ export function EmployeesTable({ data, isLoading }: EmployeesTableProps) {
   }, [sites]);
 
   // Fetch company job roles for filtering and name lookup
-  const { data: jobRoles = [] } = useQuery({
+  const { data: jobRoles = [], isLoading: isLoadingJobRoles } = useQuery({
     queryKey: ["job-roles", activeCompanyId],
     queryFn: () => activeCompanyId ? jobRolesService.getJobRoles(activeCompanyId) : Promise.resolve([]),
     enabled: !!activeCompanyId,
+    placeholderData: (previousData) => previousData,
   });
 
   const jobRolesMap = useMemo(() => {
@@ -92,11 +101,14 @@ export function EmployeesTable({ data, isLoading }: EmployeesTableProps) {
   }, [jobRoles]);
 
   // Fetch all active assignments for the company in 1 single bulk API request
-  const { data: companyAssignments = [] } = useQuery({
+  const { data: companyAssignments = [], isLoading: isLoadingAssignments } = useQuery({
     queryKey: ["assignments", "company-active", activeCompanyId],
     queryFn: () => activeCompanyId ? assignmentsService.getCompanyActiveAssignments(activeCompanyId) : Promise.resolve([]),
     enabled: !!activeCompanyId,
+    placeholderData: (previousData) => previousData,
   });
+
+  const isTableLoading = isLoading || isLoadingSites || isLoadingJobRoles || isLoadingAssignments;
 
   // Fast O(1) map for employee -> active assignment lookup
   const assignmentMap = useMemo(() => {
@@ -349,7 +361,7 @@ export function EmployeesTable({ data, isLoading }: EmployeesTableProps) {
             ))}
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {isTableLoading ? (
               <TableLoadingState colSpan={columns.length} message="Loading employee roster..." />
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (

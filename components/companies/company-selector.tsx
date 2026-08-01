@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, startTransition } from "react";
 import { Building2, ChevronDown, Plus, Settings2, Check } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -19,7 +19,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function CompanySelector() {
-  const { activeCompanyId, setActiveCompanyId } = useCompanyStore();
+  const activeCompanyId = useCompanyStore((state) => state.activeCompanyId);
+  const setActiveCompanyId = useCompanyStore((state) => state.setActiveCompanyId);
+
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogCompany, setDialogCompany] = useState<Company | null>(null);
 
@@ -29,6 +32,15 @@ export function CompanySelector() {
   });
 
   const activeCompany = companies.find((c) => c.id === activeCompanyId);
+
+  const handleSelectCompany = (id: string) => {
+    setDropdownOpen(false);
+    setTimeout(() => {
+      startTransition(() => {
+        setActiveCompanyId(id);
+      });
+    }, 10);
+  };
 
   const handleOpenAddCompany = () => {
     setDialogCompany(null);
@@ -44,7 +56,7 @@ export function CompanySelector() {
 
   return (
     <div className="flex items-center gap-1 min-w-0">
-      <DropdownMenu>
+      <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
         <DropdownMenuTrigger className="h-9 w-[130px] sm:w-[190px] md:w-[230px] flex items-center justify-between px-2 sm:px-3 font-semibold shadow-xs rounded-md border border-input bg-background text-xs sm:text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none cursor-pointer shrink">
           <div className="flex items-center gap-1.5 sm:gap-2 truncate min-w-0">
             <div className="bg-primary/10 text-primary p-1 rounded-md shrink-0">
@@ -65,7 +77,7 @@ export function CompanySelector() {
             {companies.map((c) => (
               <DropdownMenuItem
                 key={c.id}
-                onClick={() => setActiveCompanyId(c.id)}
+                onClick={() => handleSelectCompany(c.id)}
                 className="flex items-center justify-between px-2 py-1.5 cursor-pointer rounded-md text-sm font-medium"
               >
                 <span className="truncate">{c.company_name}</span>

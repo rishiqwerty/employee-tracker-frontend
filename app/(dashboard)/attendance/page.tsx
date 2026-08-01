@@ -25,7 +25,7 @@ import { AttendanceSheetTable } from "@/components/attendance/attendance-sheet-t
 
 export default function AttendancePage() {
   const queryClient = useQueryClient();
-  const { activeCompanyId } = useCompanyStore();
+  const activeCompanyId = useCompanyStore((state) => state.activeCompanyId);
 
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split("T")[0]
@@ -35,11 +35,19 @@ export default function AttendancePage() {
   const [statusFilter, setStatusFilter] = useState<AttendanceStatusFilter>("ALL");
   const [attendanceState, setAttendanceState] = useState<Record<string, AttendanceStatus | undefined>>({});
 
+  // Reset selected site & filters when active company changes
+  useEffect(() => {
+    setSelectedSiteId("ALL");
+    setStatusFilter("ALL");
+    setSearchFilter("");
+  }, [activeCompanyId]);
+
   // 1. Fetch Company Sites
   const { data: sites = [] } = useQuery({
     queryKey: ["sites", activeCompanyId],
     queryFn: () => (activeCompanyId ? sitesService.getSites(activeCompanyId) : Promise.resolve([])),
     enabled: !!activeCompanyId,
+    placeholderData: (previousData) => previousData,
   });
 
   // 2. Fetch Company Job Roles
@@ -47,6 +55,7 @@ export default function AttendancePage() {
     queryKey: ["job-roles", activeCompanyId],
     queryFn: () => (activeCompanyId ? jobRolesService.getJobRoles(activeCompanyId) : Promise.resolve([])),
     enabled: !!activeCompanyId,
+    placeholderData: (previousData) => previousData,
   });
 
   const jobRolesMap = useMemo(() => {
@@ -58,6 +67,7 @@ export default function AttendancePage() {
     queryKey: ["employees", activeCompanyId],
     queryFn: () => (activeCompanyId ? employeesService.getEmployees(activeCompanyId) : Promise.resolve([])),
     enabled: !!activeCompanyId,
+    placeholderData: (previousData) => previousData,
   });
 
   // 4. Fetch Active Assignments for Company
@@ -65,6 +75,7 @@ export default function AttendancePage() {
     queryKey: ["assignments", "company-active", activeCompanyId],
     queryFn: () => (activeCompanyId ? assignmentsService.getCompanyActiveAssignments(activeCompanyId) : Promise.resolve([])),
     enabled: !!activeCompanyId,
+    placeholderData: (previousData) => previousData,
   });
 
   const assignmentMap = useMemo(() => {
@@ -97,6 +108,7 @@ export default function AttendancePage() {
       return attendanceService.getSiteAttendance(selectedSiteId, selectedDate);
     },
     enabled: !!activeCompanyId && !!selectedDate && (selectedSiteId !== "ALL" || sites.length > 0),
+    placeholderData: (previousData) => previousData,
   });
 
   const existingAttendanceKey = useMemo(() => {

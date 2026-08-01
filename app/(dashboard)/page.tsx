@@ -28,7 +28,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 
 export default function DashboardPage() {
-  const { activeCompanyId } = useCompanyStore();
+  const activeCompanyId = useCompanyStore((state) => state.activeCompanyId);
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
 
   // 1. Fetch Company Sites
@@ -36,6 +36,7 @@ export default function DashboardPage() {
     queryKey: ["sites", activeCompanyId],
     queryFn: () => (activeCompanyId ? sitesService.getSites(activeCompanyId) : Promise.resolve([])),
     enabled: !!activeCompanyId,
+    placeholderData: (previousData) => previousData,
   });
 
   // 2. Fetch Company Employees
@@ -43,6 +44,7 @@ export default function DashboardPage() {
     queryKey: ["employees", activeCompanyId],
     queryFn: () => (activeCompanyId ? employeesService.getEmployees(activeCompanyId) : Promise.resolve([])),
     enabled: !!activeCompanyId,
+    placeholderData: (previousData) => previousData,
   });
 
   // 3. Fetch Active Assignments
@@ -50,6 +52,7 @@ export default function DashboardPage() {
     queryKey: ["assignments", "company-active", activeCompanyId],
     queryFn: () => (activeCompanyId ? assignmentsService.getCompanyActiveAssignments(activeCompanyId) : Promise.resolve([])),
     enabled: !!activeCompanyId,
+    placeholderData: (previousData) => previousData,
   });
 
   // 4. Fetch Today's Attendance Across All Sites
@@ -62,6 +65,7 @@ export default function DashboardPage() {
       return dateResults.flat();
     },
     enabled: !!activeCompanyId && sites.length > 0,
+    placeholderData: (previousData) => previousData,
   });
 
   // Calculate Metrics
