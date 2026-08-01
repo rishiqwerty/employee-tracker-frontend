@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { useCompanyStore } from "@/store/useCompanyStore";
+import { companiesService, Company } from "@/services/companies.service";
 import { sitesService } from "@/services/sites.service";
 import { advancesService } from "@/services/advances.service";
 import { deductionsService } from "@/services/deductions.service";
@@ -49,6 +50,9 @@ export default function PayrollPage() {
     queryFn: () => (activeCompanyId ? sitesService.getSites(activeCompanyId) : Promise.resolve([])),
     enabled: !!activeCompanyId,
   });
+
+  const appBrandName = useCompanyStore((state) => state.appBrandName);
+  const effectiveBrandName = appBrandName || "Employee Tracker";
 
   // Calculate start date & end date strings
   const { startDateStr, endDateStr } = useMemo(() => {
@@ -323,7 +327,7 @@ export default function PayrollPage() {
         onSearchChange={setSearchFilter}
         isLoading={isLoading}
         defaultDate={endDateStr}
-        companyName={sites.length > 0 ? "Construction Workforce Inc." : "Company Payroll"}
+        companyName={effectiveBrandName}
       />
     </div>
   );

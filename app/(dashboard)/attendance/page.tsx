@@ -16,6 +16,7 @@ import {
   AttendanceStatus,
   Attendance,
   BulkAttendanceMarkPayload,
+  EmployeeAttendanceMark,
 } from "@/services/attendance.service";
 
 import { Button } from "@/components/ui/button";
@@ -34,12 +35,14 @@ export default function AttendancePage() {
   const [searchFilter, setSearchFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<AttendanceStatusFilter>("ALL");
   const [attendanceState, setAttendanceState] = useState<Record<string, AttendanceStatus | undefined>>({});
+  const [employeeSiteState, setEmployeeSiteState] = useState<Record<string, string>>({});
 
   // Reset selected site & filters when active company changes
   useEffect(() => {
     setSelectedSiteId("ALL");
     setStatusFilter("ALL");
     setSearchFilter("");
+    setEmployeeSiteState({});
   }, [activeCompanyId]);
 
   // 1. Fetch Company Sites
@@ -112,41 +115,57 @@ export default function AttendancePage() {
   });
 
   const existingAttendanceKey = useMemo(() => {
-    return existingAttendance.map((a) => `${a.employee_id}:${a.status}`).join(",");
+    return existingAttendance.map((a) => `${a.employee_id}:${a.site_id}:${a.status}`).join(",");
   }, [existingAttendance]);
 
   // Populate local attendance state when existing attendance data changes
   useEffect(() => {
     const initialState: Record<string, AttendanceStatus | undefined> = {};
-    
+    const initialSiteState: Record<string, string> = {};
+
     // Keep unselected if not yet recorded in the database!
     existingAttendance.forEach((record) => {
       initialState[record.employee_id] = record.status;
+      if (record.site_id) {
+        initialSiteState[record.employee_id] = record.site_id;
+      }
     });
 
     setAttendanceState(initialState);
+    setEmployeeSiteState(initialSiteState);
   }, [existingAttendanceKey]);
 
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
   const isToday = selectedDate === todayStr;
 
-  // Calculate if there are unsaved attendance edits
+  // Calculate if there are unsaved attendance edits (checking status or site change)
   const hasUnsavedChanges = useMemo(() => {
     if (isLoadingAttendance) return false;
-    const savedMap = new Map<string, AttendanceStatus>();
+    const savedMap = new Map<string, { status: AttendanceStatus; site_id: string }>();
     existingAttendance.forEach((record) => {
-      savedMap.set(record.employee_id, record.status);
+      savedMap.set(record.employee_id, { status: record.status, site_id: record.site_id });
     });
 
     for (const emp of siteEmployees) {
       const currentStatus = attendanceState[emp.id];
-      const savedStatus = savedMap.get(emp.id);
-      if (currentStatus !== savedStatus) {
-        return true;
+      const ass = assignmentMap.get(emp.id);
+      const defaultSiteId = ass?.site_id || (sites.length > 0 ? sites[0].id : "");
+      const currentSiteId = employeeSiteState[emp.id] || defaultSiteId;
+
+      const savedRecord = savedMap.get(emp.id);
+
+      if (savedRecord) {
+        if (currentStatus !== savedRecord.status || (currentSiteId && currentSiteId !== savedRecord.site_id)) {
+          return true;
+        }
+      } else {
+        if (currentStatus !== undefined) {
+          return true;
+        }
       }
     }
     return false;
-  }, [existingAttendance, attendanceState, siteEmployees, isLoadingAttendance]);
+  }, [existingAttendance, attendanceState, employeeSiteState, siteEmployees, assignmentMap, sites, isLoadingAttendance]);
 
   // Warn user before leaving page if there are unsaved changes
   useEffect(() => {
@@ -184,7 +203,14 @@ export default function AttendancePage() {
   const handleStatusChange = (employeeId: string, status: AttendanceStatus) => {
     setAttendanceState((prev) => ({
       ...prev,
-      [employeeId]: prev[employeeId] === status ? undefined : status, // Toggle off if clicked again!
+      [employeeId]: prev[employeeId] === status ? undefined : status,
+    }));
+  };
+
+  const handleSiteChange = (employeeId: string, siteId: string) => {
+    setEmployeeSiteState((prev) => ({
+      ...prev,
+      [employeeId]: siteId,
     }));
   };
 
@@ -220,16 +246,21 @@ export default function AttendancePage() {
       }
 
       const nextState = { ...attendanceState };
+      const nextSiteState = { ...employeeSiteState };
       let copiedCount = 0;
 
       yesterdayRecords.forEach((record) => {
         if (record.status) {
           nextState[record.employee_id] = record.status;
+          if (record.site_id) {
+            nextSiteState[record.employee_id] = record.site_id;
+          }
           copiedCount++;
         }
       });
 
       setAttendanceState(nextState);
+      setEmployeeSiteState(nextSiteState);
       toast.success(`Copied ${copiedCount} worker records from yesterday (${yesterdayStr})`);
     } catch {
       toast.error("Failed to copy previous day attendance");
@@ -240,32 +271,30 @@ export default function AttendancePage() {
     const curr = new Date(selectedDate);
     curr.setDate(curr.getDate() + offsetDays);
     const nextDate = curr.toISOString().split("T")[0];
-    const today = new Date().toISOString().split("T")[0];
-    if (nextDate > today) {
+    if (nextDate > todayStr) {
       toast.warning("Cannot mark attendance for future dates");
       return;
     }
     setSelectedDate(nextDate);
   };
 
-  // Bulk Save Mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (siteEmployees.length === 0) throw new Error("No workers to record attendance for");
 
-      // Group records by site_id
-      const siteGroupedPayloads: Record<string, { employee_id: string; status: AttendanceStatus }[]> = {};
+      const siteGroupedPayloads: Record<string, EmployeeAttendanceMark[]> = {};
 
       let hasSelectedRecords = false;
 
       siteEmployees.forEach((emp) => {
         const status = attendanceState[emp.id];
-        if (!status) return; // Skip workers without an explicitly marked status!
+        if (!status) return;
 
         hasSelectedRecords = true;
 
         const ass = assignmentMap.get(emp.id);
-        const targetSiteId = ass?.site_id || (sites.length > 0 ? sites[0].id : null);
+        const defaultSiteId = ass?.site_id || (sites.length > 0 ? sites[0].id : null);
+        const targetSiteId = employeeSiteState[emp.id] || defaultSiteId;
         if (!targetSiteId) return;
 
         if (!siteGroupedPayloads[targetSiteId]) {
@@ -274,6 +303,7 @@ export default function AttendancePage() {
         siteGroupedPayloads[targetSiteId].push({
           employee_id: emp.id,
           status,
+          site_id: targetSiteId,
         });
       });
 
@@ -281,7 +311,6 @@ export default function AttendancePage() {
         throw new Error("Please select attendance for at least one worker before saving.");
       }
 
-      // Submit bulk payloads per site
       const promises = Object.entries(siteGroupedPayloads).map(([siteId, records]) => {
         const payload: BulkAttendanceMarkPayload = {
           date: selectedDate,
@@ -318,7 +347,6 @@ export default function AttendancePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Top Header & Navigation */}
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Daily Attendance</h1>
@@ -327,9 +355,7 @@ export default function AttendancePage() {
           </p>
         </div>
 
-        {/* Date & Controls Bar */}
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          {/* Site Selector */}
           <div className="flex items-center gap-1.5 bg-card border rounded-lg px-2.5 py-1.5 shadow-sm">
             <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
             <select
@@ -346,25 +372,31 @@ export default function AttendancePage() {
             </select>
           </div>
 
-          {/* Date Quick Nav */}
           <div className="flex items-center gap-1 bg-card border rounded-lg p-1 shadow-sm">
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8"
               onClick={() => handleDateChange(-1)}
+              title="Previous Day"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
 
-            <div className="flex items-center gap-1.5 px-2 text-sm font-semibold">
-              <Calendar className="h-4 w-4 text-primary" />
+            <div className="flex items-center gap-1.5 px-2">
+              <Calendar className="h-4 w-4 text-primary shrink-0" />
               <input
                 type="date"
                 value={selectedDate}
-                max={new Date().toISOString().split("T")[0]}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent text-sm font-semibold focus:outline-none cursor-pointer"
+                max={todayStr}
+                onChange={(e) => {
+                  if (e.target.value > todayStr) {
+                    toast.warning("Cannot mark attendance for future dates");
+                    return;
+                  }
+                  setSelectedDate(e.target.value);
+                }}
+                className="bg-transparent text-xs sm:text-sm font-bold focus:outline-none cursor-pointer"
               />
             </div>
 
@@ -373,61 +405,59 @@ export default function AttendancePage() {
               size="icon"
               className="h-8 w-8"
               onClick={() => handleDateChange(1)}
-              disabled={selectedDate >= new Date().toISOString().split("T")[0]}
+              disabled={isToday}
+              title="Next Day"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
 
-          {/* Copy Yesterday's Attendance Helper */}
           <Button
             variant="outline"
             size="sm"
             onClick={handleCopyPreviousDay}
-            className="text-xs font-semibold gap-1.5"
+            className="gap-1.5 text-xs font-semibold"
             title="Copy attendance entries from yesterday"
           >
             <Copy className="h-3.5 w-3.5" />
             Copy Yesterday
           </Button>
 
-          {/* Save Attendance Primary Action */}
           <Button
             onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || siteEmployees.length === 0}
-            className="bg-primary text-primary-foreground font-semibold shadow-sm"
+            disabled={saveMutation.isPending}
+            className="gap-1.5 font-bold text-xs shadow-sm bg-primary hover:bg-primary/90 text-primary-foreground"
           >
-            <Save className="h-4 w-4 mr-1.5" />
+            <Save className="h-4 w-4" />
             {saveMutation.isPending ? "Saving..." : "Save Attendance"}
           </Button>
         </div>
       </div>
 
-      {/* ── 1. Unsaved Changes Warning Banner ── */}
       {hasUnsavedChanges && (
-        <div className="bg-amber-500/15 border-2 border-amber-500/40 text-amber-900 dark:text-amber-200 p-4 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-md animate-pulse">
+        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 p-4 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm animate-pulse">
           <div className="flex items-center gap-3">
             <div className="bg-amber-500/20 text-amber-600 dark:text-amber-400 p-2.5 rounded-xl shrink-0">
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm flex items-center gap-2">
-                Unsaved Attendance Changes
-                <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-300 text-[10px]">
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm">Unsaved Attendance Changes Detected</h3>
+                <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300 text-[10px] font-bold uppercase tracking-wider">
                   Action Required
                 </Badge>
-              </h3>
+              </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                You have updated worker attendance records. Click &quot;Save Attendance&quot; to save your changes.
+                You have modified attendance status or site locations. Click &quot;Save Attendance Now&quot; to push your updates to the database.
               </p>
             </div>
           </div>
 
           <Button
-            size="sm"
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
-            className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-md gap-1.5 shrink-0"
+            size="sm"
+            className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm shrink-0 gap-1.5"
           >
             <Save className="h-4 w-4" />
             {saveMutation.isPending ? "Saving..." : "Save Attendance Now"}
@@ -435,8 +465,7 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {/* ── 2. Today's Unmarked Attendance Warning Banner ── */}
-      {isToday && statusCounts.Unmarked > 0 && !hasUnsavedChanges && (
+      {!isLoadingAttendance && isToday && statusCounts.Unmarked > 0 && !hasUnsavedChanges && (
         <div className="bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 p-4 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="bg-amber-500/20 text-amber-600 dark:text-amber-400 p-2.5 rounded-xl shrink-0">
@@ -461,7 +490,6 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {/* Daily Summary Stats & Metric Filter Buttons */}
       <AttendanceStats
         totalEmployees={siteEmployees.length}
         statusCounts={statusCounts}
@@ -469,14 +497,16 @@ export default function AttendancePage() {
         onFilterChange={setStatusFilter}
       />
 
-      {/* Attendance Register Sheet Table */}
       <AttendanceSheetTable
         employees={siteEmployees}
+        sites={sites}
         jobRolesMap={jobRolesMap}
         assignmentMap={assignmentMap}
         attendanceState={attendanceState}
+        employeeSiteState={employeeSiteState}
         statusFilter={statusFilter}
         onStatusChange={handleStatusChange}
+        onSiteChange={handleSiteChange}
         onMarkAllPresent={handleMarkAllPresent}
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}

@@ -1,5 +1,15 @@
 import { api } from './api';
 
+export interface SiteEarningsBreakdown {
+  site_id: string;
+  site_name: string;
+  present_days: number;
+  half_days: number;
+  paid_days: number;
+  daily_wage: number;
+  gross_earnings: number;
+}
+
 export interface PayrollRecord {
   employee_id: string;
   employee_code: string;
@@ -18,6 +28,7 @@ export interface PayrollRecord {
   uniform_deduction: number;
   total_deductions: number;
   net_salary: number;
+  site_breakdown?: SiteEarningsBreakdown[];
 }
 
 export interface PayrollSummaryTotals {

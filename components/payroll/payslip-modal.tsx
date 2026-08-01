@@ -3,7 +3,9 @@
 import { useRef } from "react";
 import { Printer, Download, Building2, User, Calendar, MapPin, Briefcase } from "lucide-react";
 import { PayrollRecord } from "@/services/payroll.service";
+import { useCompanyStore } from "@/store/useCompanyStore";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +17,7 @@ interface PayslipModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   record: PayrollRecord | null;
-  companyName: string;
+  companyName?: string;
   periodLabel: string;
 }
 
@@ -23,10 +25,16 @@ export function PayslipModal({
   open,
   onOpenChange,
   record,
-  companyName,
+  companyName = "",
   periodLabel,
 }: PayslipModalProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const appBrandName = useCompanyStore((state) => state.appBrandName);
+
+  const displayCompanyName =
+    appBrandName?.trim() ||
+    companyName?.trim() ||
+    "Employee Tracker";
 
   if (!record) return null;
 
@@ -60,7 +68,7 @@ export function PayslipModal({
             <div>
               <div className="flex items-center gap-2 text-primary font-bold text-lg">
                 <Building2 className="h-5 w-5" />
-                <span>{companyName || "Construction & Workforce Inc."}</span>
+                <span>{displayCompanyName}</span>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Official Monthly Workforce Payroll Slip
@@ -107,33 +115,92 @@ export function PayslipModal({
           </div>
 
           {/* Worked Days & Wage Table */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Attendance & Wage Computation
-            </h4>
-            <div className="rounded-lg border overflow-hidden text-xs">
-              <table className="w-full text-left">
-                <thead className="bg-muted text-muted-foreground border-b font-semibold">
-                  <tr>
-                    <th className="p-2.5">Present Days</th>
-                    <th className="p-2.5 text-center">Half Days</th>
-                    <th className="p-2.5 text-center font-bold text-foreground">Paid Days</th>
-                    <th className="p-2.5 text-right">Daily Rate</th>
-                    <th className="p-2.5 text-right font-bold text-foreground">Gross Earnings</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y font-mono">
-                  <tr>
-                    <td className="p-2.5 font-sans font-medium">{record.present_days} Days</td>
-                    <td className="p-2.5 text-center font-sans font-medium">{record.half_days} Days</td>
-                    <td className="p-2.5 text-center font-bold text-sm">{record.paid_days}</td>
-                    <td className="p-2.5 text-right">₹{formatMoney(record.daily_wage)}</td>
-                    <td className="p-2.5 text-right font-bold text-sm">₹{formatMoney(record.gross_salary)}</td>
-                  </tr>
-                </tbody>
-              </table>
+          {record.site_breakdown && record.site_breakdown.length > 0 ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-primary" />
+                  Site-by-Site Earnings & Deployment Breakdown
+                </h4>
+                {record.site_breakdown.length > 1 && (
+                  <Badge variant="secondary" className="text-[10px] font-semibold bg-primary/10 text-primary border-primary/20">
+                    Transferred ({record.site_breakdown.length} Sites)
+                  </Badge>
+                )}
+              </div>
+              <div className="rounded-lg border overflow-hidden text-xs">
+                <table className="w-full text-left">
+                  <thead className="bg-muted text-muted-foreground border-b font-semibold">
+                    <tr>
+                      <th className="p-2.5">Work Location / Site</th>
+                      <th className="p-2.5 text-center">P / H Days</th>
+                      <th className="p-2.5 text-center font-bold text-foreground">Paid Days</th>
+                      <th className="p-2.5 text-right">Daily Rate</th>
+                      <th className="p-2.5 text-right font-bold text-foreground">Earnings (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y font-mono">
+                    {record.site_breakdown.map((item, idx) => (
+                      <tr key={item.site_id || idx} className="hover:bg-muted/30">
+                        <td className="p-2.5 font-sans font-medium text-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="h-3 w-3 text-primary shrink-0" />
+                            <span>{item.site_name}</span>
+                          </div>
+                        </td>
+                        <td className="p-2.5 text-center font-sans">
+                          {item.present_days}P / {item.half_days}H
+                        </td>
+                        <td className="p-2.5 text-center font-bold">{item.paid_days}</td>
+                        <td className="p-2.5 text-right">₹{formatMoney(item.daily_wage)}</td>
+                        <td className="p-2.5 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                          ₹{formatMoney(item.gross_earnings)}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-muted/40 font-bold font-sans">
+                      <td className="p-2.5" colSpan={2}>
+                        Total Gross Earnings (All Sites)
+                      </td>
+                      <td className="p-2.5 text-center font-mono">{record.paid_days}</td>
+                      <td className="p-2.5 text-right font-mono">-</td>
+                      <td className="p-2.5 text-right font-mono text-emerald-600 dark:text-emerald-400 text-sm">
+                        ₹{formatMoney(record.gross_salary)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Attendance & Wage Computation
+              </h4>
+              <div className="rounded-lg border overflow-hidden text-xs">
+                <table className="w-full text-left">
+                  <thead className="bg-muted text-muted-foreground border-b font-semibold">
+                    <tr>
+                      <th className="p-2.5">Present Days</th>
+                      <th className="p-2.5 text-center">Half Days</th>
+                      <th className="p-2.5 text-center font-bold text-foreground">Paid Days</th>
+                      <th className="p-2.5 text-right">Daily Rate</th>
+                      <th className="p-2.5 text-right font-bold text-foreground">Gross Earnings</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y font-mono">
+                    <tr>
+                      <td className="p-2.5 font-sans font-medium">{record.present_days} Days</td>
+                      <td className="p-2.5 text-center font-sans font-medium">{record.half_days} Days</td>
+                      <td className="p-2.5 text-center font-bold text-sm">{record.paid_days}</td>
+                      <td className="p-2.5 text-right">₹{formatMoney(record.daily_wage)}</td>
+                      <td className="p-2.5 text-right font-bold text-sm">₹{formatMoney(record.gross_salary)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Deductions Itemization Table */}
           <div className="space-y-2">

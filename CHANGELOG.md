@@ -6,6 +6,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.3.0] — 2026-08-01
+
+### Added
+- **Per-Employee Site Override in Attendance Register**:
+  - Added dedicated **Site / Location column** with an interactive site selector dropdown for each worker row in `AttendanceSheetTable`.
+  - Enabled override/custom site selection per worker for past or present daily attendance entries.
+  - Updated `employeeSiteState` tracking and reactive `hasUnsavedChanges` detection to flag location modifications.
+  - Updated `bulkMarkAttendance` payload in `services/attendance.service.ts` to transmit per-record `site_id` overrides to backend database.
+- **Site-by-Site Earnings Breakdown on Payslips**:
+  - Added site-by-site earnings itemization to `PayslipModal` for transferred workers.
+  - Displays `Transferred (N Sites)` badge, location breakdown, days worked per site, site-specific daily wage rates, and per-site gross earnings.
+  - Configured payslip header branding to prioritize `appBrandName` configured in Settings.
+
+---
+
 ## [1.2.0] — 2026-08-01
 
 ### Commit Breakdown & Detailed Changes
